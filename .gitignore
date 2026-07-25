@@ -1,0 +1,192 @@
+# ============
+# General
+# ============
+.DS_Store
+*.log
+*.swp
+*.swo
+*~
+.TDS_Store
+.idea/
+.vscode/
+*.un~
+*.tmp
+*.bak
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+*.env
+*.env.*
+
+# ============
+# Python
+# ============
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.cache/
+nosetests.xml
+coverage.xml
+hypothesis/
+.pip-modules/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.venv-*/
+env-*/
+
+# UV (if using uv)
+.uv/
+uv.lock  # Optional: Exclude if you want to commit the lockfile
+
+# ============
+# Node.js / Frontend (Next.js)
+# ============
+node_modules/
+.next/
+out/
+build/
+dist/
+.next/cache/
+.next/server/
+.next/static/
+.pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+npm-debug.log*
+.pnpm/
+.pnpm-store/
+npm-debug.log*
+package-lock.json  # Optional: Commit if you prefer deterministic builds
+yarn.lock          # Optional: Commit if you prefer deterministic builds
+.pnpm-lock.yaml    # Optional: Commit if you prefer deterministic builds
+
+# ============
+# Database
+# ============
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+db.sqlite3
+data/*.db
+migrations/versions/*.py  # Optional: Exclude if auto-generated
+
+# ============
+# IDE / Editor
+# ============
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+.project
+.settings/
+*.sublime-workspace
+*.sublime-project
+*.tmproj
+*.sublime-session
+
+# ============
+# OS / System
+# ============
+.Trash-*
+.Trash
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ============
+# Logs & Temp Files
+# ============
+*.log
+*.log.*
+logs/
+*.log.gz
+*.log.bak
+*.tmp
+*.temp
+temp/
+tmp/
+*.cache
+.cache/
+*.diff
+*.patch
+*.rej
+
+# ============
+# Testing
+# ============
+.coverage
+.coverage.*
+coverage/
+*.cover
+.hypothesis/
+.tox/
+.nox/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# ============
+# Docker
+# ============
+docker-compose.override.yml
+.docker/
+Dockerfile.*
+docker-build/
+*.docker
+*.container
+
+# ============
+# Misc
+# ============
+*.min.js
+*.min.css
+*.min.map
+*.bundle.js
+*.bundle.css
+*.chunk.js
+*.chunk.css
+*.hot-update.js
+*.hot-update.json

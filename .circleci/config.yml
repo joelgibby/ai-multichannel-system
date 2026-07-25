@@ -1,0 +1,53 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@2.1.1
+
+jobs:
+  test:
+    executor:
+      name: python/default
+      tag: "3.11"
+    
+    working_directory: ~/project
+    
+    steps:
+      - checkout
+      
+      - python/install-packages:
+          pkg-manager: pip
+          pip-dependency-file: backend/requirements.txt
+          
+      - run:
+          name: Run tests
+          command: |
+            cd backend
+            pytest tests/ -v --tb=short
+          
+  build:
+    executor:
+      name: python/default
+      tag: "3.11"
+    
+    working_directory: ~/project
+    
+    steps:
+      - checkout
+      
+      - python/install-packages:
+          pkg-manager: pip
+          pip-dependency-file: backend/requirements.txt
+          
+      - run:
+          name: Build and verify
+          command: |
+            echo "Build successful"
+
+workflows:
+  version: 2
+  test_and_build:
+    jobs:
+      - test
+      - build:
+          requires:
+            - test

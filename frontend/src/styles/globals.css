@@ -1,0 +1,469 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 222.2 47.4% 11.2%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 222.2 47.4% 11.2%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 222.2 47.4% 11.2%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 222.2 47.4% 11.2%;
+  --input: 222.2 47.4% 11.2%;
+  --ring: 222.2 84% 4.9%;
+  --radius: 0.5rem;
+  --sidebar: 222.2 47.4% 11.2%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-hover: 217.2 32.6% 17.5%;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 222.2 84% 4.9%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 222.2 84% 4.9%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+  --sidebar: 222.2 47.4% 11.2%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-hover: 217.2 32.6% 17.5%;
+}
+
+* {
+  @apply border-border;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/80;
+}
+
+/* Selection */
+::selection {
+  @apply bg-primary/20 text-foreground;
+}
+
+/* Focus styles */
+:focus-visible {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
+
+/* Custom animations */
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+.typing-indicator {
+  animation: typing 0.5s steps(40, end) infinite;
+}
+
+.blink-cursor {
+  animation: blink 1s step-end infinite;
+}
+
+/* Message bubbles */
+.message-bubble {
+  @apply px-4 py-3 rounded-lg max-w-[80%];
+}
+
+.message-user {
+  @apply bg-primary text-primary-foreground ml-auto;
+}
+
+.message-assistant {
+  @apply bg-muted text-foreground mr-auto;
+}
+
+/* Voice recording indicator */
+.voice-recording {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Slide up animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+/* File upload area */
+.file-upload-area {
+  @apply border-2 border-dashed border-muted-foreground/20 rounded-lg p-6;
+  transition: all 0.2s ease;
+}
+
+.file-upload-area:hover {
+  @apply border-primary/40 bg-muted/50;
+}
+
+.file-upload-area.active {
+  @apply border-primary bg-muted/80;
+}
+
+/* Channel tabs */
+.channel-tab {
+  @apply px-4 py-2 rounded-lg text-sm font-medium transition-all;
+}
+
+.channel-tab.active {
+  @apply bg-primary text-primary-foreground;
+}
+
+.channel-tab:not(.active) {
+  @apply text-muted-foreground hover:bg-muted;
+}
+
+/* Sidebar styles */
+.sidebar-link {
+  @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors;
+}
+
+.sidebar-link:hover {
+  @apply bg-sidebar-hover;
+}
+
+.sidebar-link.active {
+  @apply bg-sidebar-hover text-foreground;
+}
+
+/* Button variants */
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+}
+
+.btn-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/90;
+}
+
+.btn-outline {
+  @apply border border-input bg-background hover:bg-muted;
+}
+
+.btn-ghost {
+  @apply hover:bg-muted;
+}
+
+.btn-destructive {
+  @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
+}
+
+/* Input styles */
+.input {
+  @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+/* Textarea styles */
+.textarea {
+  @apply flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+/* Card styles */
+.card {
+  @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+}
+
+.card-header {
+  @apply flex flex-col space-y-1.5 p-6;
+}
+
+.card-title {
+  @apply text-2xl font-semibold leading-none tracking-tight;
+}
+
+.card-description {
+  @apply text-sm text-muted-foreground;
+}
+
+.card-content {
+  @apply p-6 pt-0;
+}
+
+.card-footer {
+  @apply flex items-center p-6 pt-0;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.badge-primary {
+  @apply border-primary bg-primary/10 text-primary;
+}
+
+.badge-secondary {
+  @apply border-secondary bg-secondary/10 text-secondary;
+}
+
+.badge-success {
+  @apply border-green-500 bg-green-500/10 text-green-500;
+}
+
+.badge-warning {
+  @apply border-yellow-500 bg-yellow-500/10 text-yellow-500;
+}
+
+.badge-error {
+  @apply border-red-500 bg-red-500/10 text-red-500;
+}
+
+/* Avatar styles */
+.avatar {
+  @apply relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full;
+}
+
+.avatar-image {
+  @apply aspect-square h-full w-full;
+}
+
+.avatar-fallback {
+  @apply flex h-full w-full items-center justify-center rounded-full bg-muted;
+}
+
+/* Tooltip styles */
+.tooltip-content {
+  @apply z-50 w-64 rounded-md bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2;
+}
+
+/* Toast styles */
+.toast {
+  @apply relative w-full rounded-md border p-4 pr-8 shadow-lg animate-slide-up;
+}
+
+.toast-success {
+  @apply border-green-500 bg-green-500/10;
+}
+
+.toast-error {
+  @apply border-red-500 bg-red-500/10;
+}
+
+.toast-warning {
+  @apply border-yellow-500 bg-yellow-500/10;
+}
+
+.toast-info {
+  @apply border-blue-500 bg-blue-500/10;
+}
+
+/* Markdown content */
+.markdown-content {
+  @apply prose dark:prose-invert prose-sm max-w-none;
+}
+
+.markdown-content p {
+  @apply my-2;
+}
+
+.markdown-content pre {
+  @apply bg-muted p-4 rounded-lg my-4 overflow-x-auto;
+}
+
+.markdown-content code {
+  @apply bg-muted px-2 py-1 rounded text-sm;
+}
+
+.markdown-content a {
+  @apply text-primary hover:underline;
+}
+
+/* Voice wave animation */
+.voice-wave {
+  @apply absolute inset-0 opacity-50;
+}
+
+.voice-wave svg {
+  @apply w-full h-full;
+}
+
+/* Connection status indicator */
+.connection-status {
+  @apply flex items-center gap-2 text-sm;
+}
+
+.connection-status.connected {
+  @apply text-green-500;
+}
+
+.connection-status.disconnected {
+  @apply text-red-500;
+}
+
+.connection-status.connecting {
+  @apply text-yellow-500;
+}
+
+/* Model selector dropdown */
+.model-selector {
+  @apply w-full max-w-sm;
+}
+
+/* Temperature slider */
+.temperature-slider {
+  @apply w-full max-w-xs;
+}
+
+/* File preview */
+.file-preview {
+  @apply flex items-center gap-3 p-3 rounded-lg bg-muted;
+}
+
+/* IPFS file display */
+.ipfs-file {
+  @apply flex items-center gap-3 p-2 rounded-lg hover:bg-muted;
+}
+
+/* SMS message display */
+.sms-message {
+  @apply flex flex-col gap-1 p-3 rounded-lg;
+}
+
+.sms-message.incoming {
+  @apply bg-muted ml-auto max-w-[70%];
+}
+
+.sms-message.outgoing {
+  @apply bg-primary text-primary-foreground mr-auto max-w-[70%];
+}
+
+/* Voice call controls */
+.voice-controls {
+  @apply flex items-center gap-4;
+}
+
+.voice-control-btn {
+  @apply p-3 rounded-full hover:bg-muted transition-colors;
+}
+
+.voice-control-btn.active {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* Recording timer */
+.recording-timer {
+  @apply text-2xl font-mono tabular-nums;
+}
+
+/* Audio player */
+.audio-player {
+  @apply flex items-center gap-4 w-full;
+}
+
+.audio-progress {
+  @apply flex-1 h-2 rounded-full bg-muted;
+}
+
+.audio-progress-bar {
+  @apply h-full rounded-full bg-primary;
+}
+
+/* Transcription display */
+.transcription-display {
+  @apply p-4 rounded-lg bg-muted;
+}
+
+.transcription-text {
+  @apply text-lg;
+}
+
+.transcription-loading {
+  @apply animate-pulse;
+}
