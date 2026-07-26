@@ -5,7 +5,7 @@ python-dotenv==1.0.0
 
 # AI & LLM
 openrouter==0.1.1
-httpx==0.26.0
+httpx==0.28.0
 
 # IPFS Storage
 web3storage==0.1.1
