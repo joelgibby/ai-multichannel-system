@@ -22,7 +22,7 @@ jobs:
           name: Run tests
           command: |
             cd backend
-            pytest tests/ -v --tb=short
+            pytest test_*.py -v --tb=short
           
   build:
     executor:
