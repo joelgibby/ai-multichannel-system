@@ -15,7 +15,7 @@ ipfshttpclient==0.7.0
 twilio==9.0.0
 
 # TTS/STT (Optional: for self-hosted)
-whisper-tiny==0.1.0  # If self-hosting STT
+# whisper>=1.0.0  # Uncomment if self-hosting STT with local Whisper
 
 # Database & ORM
 sqlalchemy==2.0.25
