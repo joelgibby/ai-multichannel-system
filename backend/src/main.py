@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .config.database import Base, database, get_db
@@ -29,14 +29,14 @@ from .schemas.response import ErrorResponse, SuccessResponse
 from .services import (
     get_ai_service,
     get_conversation_service,
-    get_ipfs_service,
+    get_s3_service,
     get_sms_service,
     get_socket_service,
     get_voice_service,
 )
 from .services.ai_service import AIService, ChatMessage, ChatResponse
 from .services.conversation_service import ConversationService
-from .services.ipfs_service import IPFSService, IPFSUploadResult
+from .services.s3_service import S3Service, S3UploadResult, get_s3_service
 from .services.sms_service import IncomingSMS, SMSMessage, SMSResponse, SMSService
 from .services.socket_service import SocketService
 from .services.voice_service import (
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting AI Multichannel System...")
     
     # Initialize services
-    await get_ipfs_service()
+    await get_s3_service()
     
     logger.info("Application started successfully")
     logger.info("Socket.IO available at ws://localhost:8000/ws")
@@ -89,7 +89,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="AI Multichannel System - Voice, SMS, and IPFS Storage",
+    description="AI Multichannel System - Voice, SMS, and Object Storage",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -115,8 +115,8 @@ def get_ai_service_dep() -> AIService:
     return get_ai_service()
 
 
-def get_ipfs_service_dep() -> IPFSService:
-    return get_ipfs_service()
+async def get_s3_service_dep() -> S3Service:
+    return await get_s3_service()
 
 
 def get_sms_service_dep() -> SMSService:
@@ -224,44 +224,43 @@ async def list_ai_models(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# IPFS Storage Endpoints
+# Object Storage Endpoints
 from fastapi import UploadFile, File
+import mimetypes
 
-@app.post("/api/ipfs/upload", response_model=SuccessResponse[IPFSUploadResult])
-async def upload_to_ipfs(
+
+@app.post("/api/storage/upload", response_model=SuccessResponse[S3UploadResult])
+async def upload_to_storage(
     file: UploadFile = File(...),
-    ipfs_service: IPFSService = Depends(get_ipfs_service_dep),
-) -> SuccessResponse[IPFSUploadResult]:
-    """
-    Upload a file to IPFS
-    
-    Upload a file and get its CID and URL.
-    """
+    s3_service: S3Service = Depends(get_s3_service_dep),
+) -> SuccessResponse[S3UploadResult]:
+    """Upload a file to S3-compatible object storage."""
     try:
         content = await file.read()
-        result = await ipfs_service.upload_bytes(
+        result = await s3_service.upload_bytes(
             content=content,
-            original_filename=file.filename,
+            original_filename=file.filename or "upload.bin",
         )
         return SuccessResponse(data=result)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/api/ipfs/{cid}")
-async def download_from_ipfs(
-    cid: str,
-    filename: Optional[str] = None,
-    ipfs_service: IPFSService = Depends(get_ipfs_service_dep),
+@app.get("/api/storage/{key:path}")
+async def download_from_storage(
+    key: str,
+    s3_service: S3Service = Depends(get_s3_service_dep),
 ):
-    """
-    Download a file from IPFS
-    
-    Download a file by its CID.
-    """
+    """Download a file by its storage key."""
     try:
-        content = await ipfs_service.download_file(cid=cid, filename=filename)
-        return JSONResponse(content=content)
+        content = await s3_service.download_file(key=key)
+        media_type, _ = mimetypes.guess_type(key)
+        return Response(
+            content=content,
+            media_type=media_type or "application/octet-stream",
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found")
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
 

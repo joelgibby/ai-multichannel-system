@@ -406,8 +406,8 @@ body {
   @apply flex items-center gap-3 p-3 rounded-lg bg-muted;
 }
 
-/* IPFS file display */
-.ipfs-file {
+/* Stored file display */
+.stored-file {
   @apply flex items-center gap-3 p-2 rounded-lg hover:bg-muted;
 }
 

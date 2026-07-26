@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS file_storage (
     file_type VARCHAR(20) NOT NULL DEFAULT 'other',
     mime_type VARCHAR(100),
     file_size_bytes INTEGER NOT NULL,
-    provider VARCHAR(20) NOT NULL DEFAULT 'ipfs',
+    provider VARCHAR(20) NOT NULL DEFAULT 's3',
     storage_path VARCHAR(500) NOT NULL,
     cid VARCHAR(100),
     url VARCHAR(500),
