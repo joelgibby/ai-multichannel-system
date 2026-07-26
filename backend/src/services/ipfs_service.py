@@ -34,10 +34,10 @@ class IPFSService:
         """Initialize the IPFS service"""
         if self.settings.WEB3_STORAGE_TOKEN:
             try:
-                # Import web3.storage only when needed
-                from web3.storage import Web3Storage
-                self._web3_storage_client = Web3Storage(
-                    token=self.settings.WEB3_STORAGE_TOKEN
+                from web3storage import Client
+
+                self._web3_storage_client = Client(
+                    api_key=self.settings.WEB3_STORAGE_TOKEN
                 )
             except ImportError:
                 pass
@@ -124,16 +124,15 @@ class IPFSService:
         """Upload to Web3.Storage"""
         if not self._web3_storage_client:
             raise ValueError("Web3.Storage not initialized")
-        
-        # Read file content
-        with open(file_path, "rb") as f:
-            file_content = f.read()
-        
+
         # Upload to Web3.Storage
-        cid = await self._web3_storage_client.put(
-            [file_content],
-            name=original_filename,
+        result = await asyncio.to_thread(
+            self._web3_storage_client.upload_file,
+            str(file_path),
         )
+        cid = result.get("cid")
+        if not cid:
+            raise ValueError("No CID returned from Web3.Storage upload")
         
         # Construct URL
         url = f"{self.settings.IPFS_GATEWAY_URL}/{cid}/{original_filename}"
