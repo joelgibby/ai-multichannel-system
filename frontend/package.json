@@ -1,7 +1,7 @@
 {
   "name": "ai-multichannel-frontend",
   "version": "1.0.0",
-  "description": "Frontend for AI Multichannel System - Voice, SMS, and IPFS Storage",
+  "description": "Frontend for AI Multichannel System - Voice, SMS, and Object Storage",
   "private": true,
   "scripts": {
     "dev": "next dev",

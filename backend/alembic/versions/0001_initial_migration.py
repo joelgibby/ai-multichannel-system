@@ -96,7 +96,7 @@ def upgrade() -> None:
         sa.Column('file_type', sa.Enum('audio', 'image', 'video', 'document', 'text', 'other', name='filetype'), nullable=False, server_default='other', index=True),
         sa.Column('mime_type', sa.String(length=100), nullable=True),
         sa.Column('file_size_bytes', sa.Integer(), nullable=False),
-        sa.Column('provider', sa.Enum('ipfs', 's3', 'local', 'filebase', 'pinata', name='storageprovider'), nullable=False, server_default='ipfs', index=True),
+        sa.Column('provider', sa.Enum('s3', 'local', name='storageprovider'), nullable=False, server_default='s3', index=True),
         sa.Column('storage_path', sa.String(length=500), nullable=False),
         sa.Column('cid', sa.String(length=100), nullable=True, index=True),
         sa.Column('url', sa.String(length=500), nullable=True),

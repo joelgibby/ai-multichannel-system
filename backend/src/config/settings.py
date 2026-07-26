@@ -47,9 +47,16 @@ class Settings(BaseSettings):
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     DEFAULT_AI_MODEL: str = "mistralai/mistral-7b-instruct"
     
-    # IPFS Storage
-    WEB3_STORAGE_TOKEN: Optional[str] = None
-    IPFS_GATEWAY_URL: str = "https://ipfs.io/ipfs"
+    # Object Storage (S3-compatible)
+    S3_BUCKET: Optional[str] = None
+    S3_REGION: str = "us-east-1"
+    S3_ACCESS_KEY_ID: Optional[str] = None
+    S3_SECRET_ACCESS_KEY: Optional[str] = None
+    S3_ENDPOINT_URL: Optional[str] = None
+    S3_PUBLIC_URL_BASE: Optional[str] = None
+    S3_PREFIX: str = "uploads"
+    LOCAL_STORAGE_PATH: str = "/tmp/ai-multichannel-storage"
+    PUBLIC_API_BASE_URL: str = "http://localhost:8000"
     
     # Twilio (SMS & Voice)
     TWILIO_ACCOUNT_SID: Optional[str] = None

@@ -74,15 +74,15 @@ export interface AIModel {
 }
 
 // ============================================
-// IPFS Types
+// Object Storage Types
 // ============================================
 
-export type StorageProvider = 'ipfs' | 's3' | 'local' | 'filebase' | 'pinata';
+export type StorageProvider = 's3' | 'local';
 
 export type FileType = 'audio' | 'image' | 'video' | 'document' | 'text' | 'other';
 
-export interface IPFSUploadResult {
-  cid: string;
+export interface FileUploadResult {
+  key: string;
   url: string;
   provider: StorageProvider;
   file_size_bytes: number;
@@ -458,7 +458,7 @@ export interface FilePreviewProps {
   onRemove: () => void;
 }
 
-export interface IPFSFileProps {
+export interface StoredFileProps {
   file: FileStorage;
   onDownload: () => void;
   onDelete: () => void;

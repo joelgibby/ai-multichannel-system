@@ -34,3 +34,20 @@ def test_socket_service_initializes() -> None:
     assert socket_service.sio is not None
     assert socket_service.get_asgi_app() is not None
     assert hasattr(socket_service, "broadcast_message")
+
+
+def test_storage_upload_and_download(client: TestClient) -> None:
+    response = client.post(
+        "/api/storage/upload",
+        files={"file": ("hello.txt", b"hello storage", "text/plain")},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["data"]["key"]
+    assert payload["data"]["provider"] in {"s3", "local"}
+
+    download = client.get(f"/api/storage/{payload['data']['key']}")
+    assert download.status_code == 200
+    assert download.content == b"hello storage"

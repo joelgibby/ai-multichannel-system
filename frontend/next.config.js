@@ -15,14 +15,20 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'ipfs.io',
-        port: '',
-        pathname: '/ipfs/**',
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8000',
+        pathname: '/api/storage/**',
       },
       {
         protocol: 'https',
-        hostname: '*.pinata.cloud',
+        hostname: '**.amazonaws.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.r2.cloudflarestorage.com',
         port: '',
         pathname: '/**',
       },

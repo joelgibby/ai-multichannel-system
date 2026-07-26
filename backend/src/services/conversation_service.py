@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 from ..config.database import database
 from ..config.settings import get_settings
 from ..models.conversation import ChannelType, Conversation, ConversationStatus
-from ..models.file_storage import FileStorage, StorageProvider
+from ..models.file_storage import FileStorage
 from ..models.message import Message, MessageRole, MessageStatus, MessageType
 from ..models.user import User
 from ..services.ai_service import AIService, ChatMessage, get_ai_service
-from ..services.ipfs_service import IPFSService, get_ipfs_service
+from ..services.s3_service import get_s3_service
 from ..services.sms_service import IncomingSMS, SMSService, get_sms_service
 from ..services.socket_service import SocketService, get_socket_service
 from ..services.voice_service import VoiceCall, VoiceService, get_voice_service
@@ -31,7 +31,7 @@ class ConversationService:
         self.settings = get_settings()
         self._db = database.async_session  # This is the async_sessionmaker
         self._ai_service = get_ai_service
-        self._ipfs_service = get_ipfs_service
+        self._s3_service = get_s3_service
         self._sms_service = get_sms_service
         self._voice_service = get_voice_service
         self._socket_service = get_socket_service
@@ -609,25 +609,23 @@ class ConversationService:
         Returns:
             FileStorage entry
         """
-        ipfs_service = await self._ipfs_service()
-        
-        # Upload to IPFS
-        upload_result = await ipfs_service.upload_bytes(
+        s3_service = await self._s3_service()
+
+        upload_result = await s3_service.upload_bytes(
             content=file_data,
             original_filename=filename,
         )
-        
-        # Create file storage entry
+
         async with self._db() as session:
             file_storage = FileStorage(
                 original_filename=filename,
                 stored_filename=upload_result.original_filename,
-                file_type=ipfs_service.get_file_type_from_extension(filename),
-                mime_type=None,  # Could be detected from filename
+                file_type=s3_service.get_file_type_from_extension(filename),
+                mime_type=None,
                 file_size_bytes=len(file_data),
-                provider=StorageProvider.IPFS,
-                storage_path=upload_result.cid,
-                cid=upload_result.cid,
+                provider=upload_result.provider,
+                storage_path=upload_result.key,
+                cid=upload_result.key if len(upload_result.key) <= 100 else None,
                 url=upload_result.url,
                 user_id=user_id,
                 conversation_id=conversation_id,
