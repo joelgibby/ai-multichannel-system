@@ -13,7 +13,7 @@ import {
   ConversationCreate,
   FileStorage,
   IncomingSMS,
-  IPFSUploadResult,
+  FileUploadResult,
   Message,
   MessageCreate,
   PaginatedResponse,
@@ -158,18 +158,18 @@ export const listAIModels = async (): Promise<AIModel[]> => {
 };
 
 // ============================================
-// IPFS Storage Endpoints
+// Object Storage Endpoints
 // ============================================
 
-export const uploadToIPFS = async (
+export const uploadToStorage = async (
   file: File,
   onUploadProgress?: (progress: number) => void
-): Promise<IPFSUploadResult> => {
+): Promise<FileUploadResult> => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   return handleResponse(
-    api.post<IPFSUploadResult>('/api/ipfs/upload', formData, {
+    api.post<FileUploadResult>('/api/storage/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -183,9 +183,8 @@ export const uploadToIPFS = async (
   );
 };
 
-export const downloadFromIPFS = async (cid: string, filename?: string): Promise<Blob> => {
-  const response = await api.get(`/api/ipfs/${cid}`, {
-    params: { filename },
+export const downloadFromStorage = async (key: string): Promise<Blob> => {
+  const response = await api.get(`/api/storage/${key}`, {
     responseType: 'blob',
   });
   return response.data;
@@ -408,9 +407,9 @@ export default {
   streamChatWithAI,
   listAIModels,
   
-  // IPFS
-  uploadToIPFS,
-  downloadFromIPFS,
+  // Storage
+  uploadToStorage,
+  downloadFromStorage,
   
   // SMS
   sendSMS,

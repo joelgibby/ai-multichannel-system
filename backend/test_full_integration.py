@@ -85,7 +85,7 @@ async def test_full_integration():
         from services import (
             get_ai_service,
             get_conversation_service,
-            get_ipfs_service,
+            get_s3_service,
             get_socket_service,
             get_sms_service,
             get_voice_service,
@@ -93,7 +93,7 @@ async def test_full_integration():
         services = [
             ('AI', get_ai_service),
             ('Conversation', get_conversation_service),
-            ('IPFS', get_ipfs_service),
+            ('S3', get_s3_service),
             ('Socket.IO', get_socket_service),
             ('SMS', get_sms_service),
             ('Voice', get_voice_service),

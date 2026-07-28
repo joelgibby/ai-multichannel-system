@@ -770,8 +770,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setVoiceTranscribing(true);
       setVoiceError(undefined);
 
-      // Upload audio to IPFS
-      const uploadResult = await api.uploadToIPFS(
+      // Upload audio to object storage
+      const uploadResult = await api.uploadToStorage(
         new File([audioBlob], 'voice-message.wav', { type: 'audio/wav' }),
         (progress) => setFileProgress(progress)
       );
@@ -801,20 +801,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setFileUploading(true);
       setFileError(undefined);
 
-      const result = await api.uploadToIPFS(file, (progress) => {
+      const result = await api.uploadToStorage(file, (progress) => {
         setFileProgress(progress);
       });
 
       addFile({
-        id: result.cid,
+        id: result.key,
         original_filename: file.name,
         stored_filename: result.original_filename,
         file_type: getFileTypeFromName(file.name),
         mime_type: file.type,
         file_size_bytes: file.size,
         provider: result.provider,
-        storage_path: result.cid,
-        cid: result.cid,
+        storage_path: result.key,
+        cid: result.key,
         url: result.url,
         is_public: false,
         created_at: new Date().toISOString(),

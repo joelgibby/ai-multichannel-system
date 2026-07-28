@@ -1,5 +1,5 @@
 """
-File storage model for IPFS and other storage backends
+File storage model for object storage backends
 """
 import uuid
 from datetime import datetime
@@ -15,11 +15,8 @@ from ..schemas.base import BaseSchema
 
 class StorageProvider(str, Enum):
     """Storage providers"""
-    IPFS = "ipfs"
     S3 = "s3"
     LOCAL = "local"
-    FILEBASE = "filebase"
-    PINATA = "pinata"
 
 
 class FileType(str, Enum):
@@ -58,7 +55,7 @@ class FileStorage(Base):
     # Storage info
     provider: Mapped[StorageProvider] = mapped_column(
         SQLEnum(StorageProvider),
-        default=StorageProvider.IPFS,
+        default=StorageProvider.S3,
         index=True,
     )
     storage_path: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -66,7 +63,7 @@ class FileStorage(Base):
         String(100),
         nullable=True,
         index=True,
-    )  # IPFS Content ID
+    )  # Legacy content identifier; mirrors storage_path for S3 keys
     url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     
     # Security
@@ -116,7 +113,7 @@ class FileStorageBase(BaseSchema):
     file_type: FileType = FileType.OTHER
     mime_type: Optional[str] = None
     file_size_bytes: int
-    provider: StorageProvider = StorageProvider.IPFS
+    provider: StorageProvider = StorageProvider.S3
     storage_path: str
     cid: Optional[str] = None
     url: Optional[str] = None

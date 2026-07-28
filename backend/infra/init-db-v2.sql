@@ -1,26 +1,4 @@
--- Create Enum Types
--- ============================================
-
-CREATE TYPE channeltype AS ENUM ('web', 'sms', 'voice', 'mobile', 'email');
-CREATE TYPE conversationstatus AS ENUM ('active', 'archived', 'deleted');
-CREATE TYPE messagerole AS ENUM ('user', 'assistant', 'system');
-CREATE TYPE messagetype AS ENUM ('text', 'audio', 'image', 'video', 'file', 'command');
-CREATE TYPE messagestatus AS ENUM ('pending', 'processing', 'completed', 'failed');
-CREATE TYPE filetype AS ENUM ('audio', 'image', 'video', 'document', 'text', 'other');
-CREATE TYPE storageprovider AS ENUM ('ipfs', 's3', 'local', 'filebase', 'pinata');
-=======
--- ============================================
--- Create Enum Types (kept for backward compatibility but not used in tables)
--- ============================================
-
--- Note: We use VARCHAR instead of ENUM for better compatibility with ORMs
--- CREATE TYPE channeltype AS ENUM ('web', 'sms', 'voice', 'mobile', 'email');
--- CREATE TYPE conversationstatus AS ENUM ('active', 'archived', 'deleted');
--- CREATE TYPE messagerole AS ENUM ('user', 'assistant', 'system');
--- CREATE TYPE messagetype AS ENUM ('text', 'audio', 'image', 'video', 'file', 'command');
--- CREATE TYPE messagestatus AS ENUM ('pending', 'processing', 'completed', 'failed');
--- CREATE TYPE filetype AS ENUM ('audio', 'image', 'video', 'document', 'text', 'other');
--- CREATE TYPE storageprovider AS ENUM ('ipfs', 's3', 'local', 'filebase', 'pinata');AI Multichannel System - Database Initialization Script v2
+-- AI Multichannel System - Database Initialization Script v2
 -- PostgreSQL 14+ Required
 -- Fixed circular dependency between messages and file_storage
 
@@ -39,7 +17,7 @@ CREATE TYPE messagerole AS ENUM ('user', 'assistant', 'system');
 CREATE TYPE messagetype AS ENUM ('text', 'audio', 'image', 'video', 'file', 'command');
 CREATE TYPE messagestatus AS ENUM ('pending', 'processing', 'completed', 'failed');
 CREATE TYPE filetype AS ENUM ('audio', 'image', 'video', 'document', 'text', 'other');
-CREATE TYPE storageprovider AS ENUM ('ipfs', 's3', 'local', 'filebase', 'pinata');
+CREATE TYPE storageprovider AS ENUM ('s3', 'local');
 
 -- ============================================
 -- Create Tables (in order to avoid circular dependencies)
@@ -87,7 +65,7 @@ CREATE TABLE IF NOT EXISTS file_storage (
     file_type VARCHAR(20) NOT NULL DEFAULT 'other',
     mime_type VARCHAR(100),
     file_size_bytes INTEGER NOT NULL,
-    provider VARCHAR(20) NOT NULL DEFAULT 'ipfs',
+    provider VARCHAR(20) NOT NULL DEFAULT 's3',
     storage_path VARCHAR(500) NOT NULL,
     cid VARCHAR(100),
     url VARCHAR(500),
@@ -227,13 +205,13 @@ GROUP BY conversation_id;
 COMMENT ON TABLE users IS 'Stores user accounts with authentication and preference data';
 COMMENT ON TABLE conversations IS 'Stores conversation metadata and AI configuration';
 COMMENT ON TABLE messages IS 'Stores all messages in conversations with AI responses';
-COMMENT ON TABLE file_storage IS 'Stores file metadata for IPFS and other storage backends';
+COMMENT ON TABLE file_storage IS 'Stores file metadata for object storage backends';
 COMMENT ON TABLE sessions IS 'Stores user authentication sessions';
 
 COMMENT ON COLUMN users.default_ai_model IS 'Default AI model for new conversations';
 COMMENT ON COLUMN conversations.context_window IS 'Stores conversation history for context';
-COMMENT ON COLUMN file_storage.cid IS 'IPFS Content ID for files stored on IPFS';
-COMMENT ON COLUMN file_storage.provider IS 'Storage backend: ipfs, s3, local, filebase, pinata';
+COMMENT ON COLUMN file_storage.cid IS 'Optional legacy content identifier';
+COMMENT ON COLUMN file_storage.provider IS 'Storage backend: s3 or local';
 
 -- ============================================
 -- Grant permissions

@@ -6,7 +6,6 @@ import { Mic, MicOff, Send, Paperclip, X, Settings, Plus, Loader2, Bot, User, Fi
 
 import { useApp } from '@/context/AppContext';
 import { initRecording, startRecording, stopRecording, cleanupRecording, getRecordingStatus, playAudio, stopPlayback, formatTime, AVAILABLE_VOICES } from '@/services/voice';
-import { uploadToIPFS } from '@/services/api';
 import { ChannelType } from '@/types';
 import { Sidebar } from '@/components/Sidebar';
 import { MessageBubble } from '@/components/MessageBubble';
