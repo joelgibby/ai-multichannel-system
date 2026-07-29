@@ -17,6 +17,7 @@ twilio==9.0.0
 
 # Database & ORM
 sqlalchemy==2.0.25
+greenlet==3.0.3
 alembic==1.13.1
 asyncpg==0.29.0
 
