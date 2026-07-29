@@ -83,6 +83,20 @@ class Settings(BaseSettings):
     RATE_LIMIT_REQUESTS: int = 100
     RATE_LIMIT_PERIOD: int = 60  # seconds
     
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: str) -> str:
+        """Ensure async SQLAlchemy uses asyncpg (Fly sets postgres:// URLs)."""
+        if not isinstance(v, str):
+            return v
+        if "+asyncpg" in v.split("://", 1)[0]:
+            return v
+        if v.startswith("postgres://"):
+            return "postgresql+asyncpg://" + v.removeprefix("postgres://")
+        if v.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + v.removeprefix("postgresql://")
+        return v
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):
