@@ -69,6 +69,20 @@ const nextConfig = {
       },
     ];
   },
+
+  // Serve legal pages at clean URLs
+  async rewrites() {
+    return [
+      {
+        source: '/privacy',
+        destination: '/privacy.html',
+      },
+      {
+        source: '/terms',
+        destination: '/terms.html',
+      },
+    ];
+  },
   
   // Environment variables
   env: {
