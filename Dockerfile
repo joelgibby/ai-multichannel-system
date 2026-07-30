@@ -57,6 +57,7 @@ WORKDIR /app
 
 # Copy application code
 COPY backend/src/ ./src/
+COPY backend/static/ ./static/
 COPY backend/alembic.ini .
 COPY backend/alembic/ ./alembic/
 
