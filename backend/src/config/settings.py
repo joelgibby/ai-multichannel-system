@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: Union[list[str], str] = ["*"]
     CORS_ALLOW_CREDENTIALS: bool = True
-    CORS_ALLOW_METHODS: list[str] = ["*"]
-    CORS_ALLOW_HEADERS: list[str] = ["*"]
+    CORS_ALLOW_METHODS: Union[list[str], str] = ["*"]
+    CORS_ALLOW_HEADERS: Union[list[str], str] = ["*"]
     
     # Database (PostgreSQL)
     DATABASE_URL: str = Field(
@@ -97,24 +97,38 @@ class Settings(BaseSettings):
             return "postgresql+asyncpg://" + v.removeprefix("postgresql://")
         return v
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v):
-        """Parse CORS origins from comma-separated string or list"""
+    @staticmethod
+    def _parse_cors_list_value(v):
+        """Parse CORS list settings from comma-separated strings or lists."""
         if isinstance(v, list):
             return v
+        if not isinstance(v, str):
+            return v
+        v = v.strip()
         if v == "*":
             return ["*"]
-        return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return [item.strip() for item in v.split(",") if item.strip()]
+
+    @field_validator("CORS_ORIGINS", "CORS_ALLOW_METHODS", "CORS_ALLOW_HEADERS", mode="before")
+    @classmethod
+    def parse_cors_list(cls, v):
+        """Parse CORS settings from comma-separated string or list."""
+        return cls._parse_cors_list_value(v)
     
     @property
     def cors_origins_list(self) -> list[str]:
         """Return CORS origins as a list"""
-        if isinstance(self.CORS_ORIGINS, list):
-            return self.CORS_ORIGINS
-        if self.CORS_ORIGINS == "*":
-            return ["*"]
-        return [self.CORS_ORIGINS]
+        return self._parse_cors_list_value(self.CORS_ORIGINS)
+    
+    @property
+    def cors_allow_methods_list(self) -> list[str]:
+        """Return allowed CORS methods as a list"""
+        return self._parse_cors_list_value(self.CORS_ALLOW_METHODS)
+    
+    @property
+    def cors_allow_headers_list(self) -> list[str]:
+        """Return allowed CORS headers as a list"""
+        return self._parse_cors_list_value(self.CORS_ALLOW_HEADERS)
     
     @property
     def is_production(self) -> bool:
