@@ -89,13 +89,19 @@ class Settings(BaseSettings):
         """Ensure async SQLAlchemy uses asyncpg (Fly sets postgres:// URLs)."""
         if not isinstance(v, str):
             return v
-        if "+asyncpg" in v.split("://", 1)[0]:
+        v = v.strip()
+        scheme, _, rest = v.partition("://")
+        if not rest:
             return v
-        if v.startswith("postgres://"):
-            return "postgresql+asyncpg://" + v.removeprefix("postgres://")
-        if v.startswith("postgresql://"):
-            return "postgresql+asyncpg://" + v.removeprefix("postgresql://")
-        return v
+        if "+" in scheme:
+            dialect, driver = scheme.split("+", 1)
+        else:
+            dialect, driver = scheme, ""
+        if dialect.lower() not in ("postgres", "postgresql"):
+            return v
+        if driver.lower() == "asyncpg":
+            return v
+        return f"postgresql+asyncpg://{rest}"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
