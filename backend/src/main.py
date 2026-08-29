@@ -3,11 +3,12 @@ Main FastAPI application for AI Multichannel System
 """
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .config.database import Base, database, get_db
@@ -551,6 +552,26 @@ async def socket_status(
 # Mount static files (for frontend)
 if settings.DEBUG:
     app.mount("/static", StaticFiles(directory="../frontend/public"), name="static")
+
+LEGAL_DIR = Path(__file__).resolve().parent.parent / "static"
+
+
+@app.get("/privacy", include_in_schema=False)
+async def privacy_policy() -> FileResponse:
+    """Public privacy policy (required for SMS/voice compliance)."""
+    return FileResponse(LEGAL_DIR / "privacy.html", media_type="text/html")
+
+
+@app.get("/terms", include_in_schema=False)
+async def terms_and_conditions() -> FileResponse:
+    """Public terms and conditions."""
+    return FileResponse(LEGAL_DIR / "terms.html", media_type="text/html")
+
+
+@app.get("/legal.css", include_in_schema=False)
+async def legal_stylesheet() -> FileResponse:
+    """Stylesheet for legal pages."""
+    return FileResponse(LEGAL_DIR / "legal.css", media_type="text/css")
 
 
 # Root endpoint
