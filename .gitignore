@@ -24,6 +24,7 @@ __pycache__/
 .env.production
 *.env
 *.env.*
+!.env.example
 
 # ============
 # Python
