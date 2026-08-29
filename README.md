@@ -1,8 +1,8 @@
 # AI Multichannel System
 
-> **Always-on AI interaction system with Voice, SMS, and IPFS Storage**
+> **Always-on AI interaction system with Voice, SMS, and Object Storage**
 
-A comprehensive, production-ready system for interacting with AI models through multiple channels including voice calls, SMS (with rich media support), and web interfaces. Uses IPFS for decentralized storage and supports multiple AI model providers.
+A comprehensive, production-ready system for interacting with AI models through multiple channels including voice calls, SMS (with rich media support), and web interfaces. Uses S3-compatible object storage and supports multiple AI model providers.
 
 ## Features
 
@@ -17,11 +17,10 @@ A comprehensive, production-ready system for interacting with AI models through 
   - Streaming responses for real-time interaction
   - Conversation context management
 
-- **IPFS Storage**
-  - Web3.Storage integration
-  - Support for Pinata, Filebase, and other providers
+- **Object Storage**
+  - S3-compatible object storage
+  - Local filesystem fallback for development
   - Automatic file type detection
-  - Persistent storage with CID tracking
 
 - **Voice & SMS**
   - Twilio integration for SMS and voice
@@ -30,11 +29,10 @@ A comprehensive, production-ready system for interacting with AI models through 
   - Webhook handling for incoming messages
 
 - **Production Ready**
-  - Docker and Docker Compose support
-  - Fly.io deployment configuration
+  - Native Docker and Docker Compose deployment
   - PostgreSQL database with async support
   - Redis for caching and background tasks
-  - Health checks and monitoring
+  - Nginx reverse proxy and health checks
 
 ## Architecture
 
@@ -47,10 +45,10 @@ A comprehensive, production-ready system for interacting with AI models through 
          │                 │                  │             │
          ▼                 ▼                  ▼             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Fly.io / Docker (Backend)                  │
+│                 Docker Compose (Native Host)                  │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  FastAPI    │  │  Celery     │  │    Conversation          │  │
-│  │  (API)      │  │  (Tasks)     │  │    Management            │  │
+│  │  Nginx      │  │  FastAPI    │  │  Next.js Frontend       │  │
+│  │  (proxy)    │──│  (API)      │  │  (chat UI)              │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                                  │
@@ -58,15 +56,15 @@ A comprehensive, production-ready system for interacting with AI models through 
 ┌─────────────────────────────────────────────────────────────┐
 │                    External Services                           │
 ├─────────────────┬─────────────────┬─────────────────┬─────────┤
-│  OpenRouter      │  Web3.Storage    │  Twilio          │ElevenLabs│
-│  (AI Models)     │  (IPFS Storage)  │  (SMS/Voice)     │ (TTS)    │
+│  OpenRouter      │  S3 Storage     │  Twilio          │ElevenLabs│
+│  (AI Models)     │  (Objects)      │  (SMS/Voice)     │ (TTS)    │
 └─────────────────┴─────────────────┴─────────────────┴─────────┘
                                  │
                                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Data Storage                                │
 ├─────────────────┬─────────────────┬─────────────────┐
-│  PostgreSQL      │  Redis           │  IPFS            │
+│  PostgreSQL      │  Redis           │  Local/S3        │
 │  (Database)      │  (Cache/Queue)   │  (Files)         │
 └─────────────────┴─────────────────┴─────────────────┘
 ```
@@ -75,11 +73,8 @@ A comprehensive, production-ready system for interacting with AI models through 
 
 ### Prerequisites
 
-- Python 3.11+
-- PostgreSQL 15+
-- Redis 7+
-- Docker and Docker Compose (optional)
-- Fly.io CLI (for deployment)
+- Docker and Docker Compose (recommended)
+- Or for local non-Docker development: Python 3.11+, PostgreSQL 15+, Redis 7+, Node.js 20+
 
 ### 1. Clone and Setup
 
@@ -102,45 +97,33 @@ You'll need API keys for the following services:
 | Service | Purpose | Where to Get | Free Tier |
 |---------|---------|--------------|-----------|
 | OpenRouter | AI Models | [openrouter.ai/keys](https://openrouter.ai/keys) | Yes |
-| Web3.Storage | IPFS Storage | [web3.storage](https://web3.storage/docs/how-tos/get-started/) | 5GB |
+| S3 / R2 / MinIO | Object storage | Your cloud provider | Varies |
 | Twilio | SMS & Voice | [twilio.com](https://console.twilio.com/) | $15 credit |
 | ElevenLabs | TTS | [elevenlabs.io](https://elevenlabs.io/) | Yes |
 
-### 3. Install Dependencies
+### 3. Run with Docker (recommended)
 
 ```bash
-# Create virtual environment
+# Development stack (API :8000, frontend :3000, Postgres, Redis)
+docker compose up --build
+
+# Production stack behind nginx on :80
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+API health: `http://localhost:8000/health`  
+Frontend: `http://localhost:3000` (dev) or `http://localhost` (prod via nginx)
+
+### 4. Local non-Docker setup (optional)
+
+```bash
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install Python dependencies
 pip install -r backend/requirements.txt
-```
 
-### 4. Setup Database
-
-```bash
-# Install PostgreSQL locally or use Docker
-# Using Docker:
-docker-compose up -d db
-
-# Wait for database to be ready
-sleep 5
-
-# Run migrations
-cd backend
-alembic upgrade head
-cd ..
-```
-
-### 5. Run the Application
-
-```bash
-# Development
-python -m uvicorn backend.src.main:app --reload
-
-# Or with Docker Compose
-docker-compose up -d
+docker compose up -d db redis
+cd backend && alembic upgrade head && cd ..
+python -m uvicorn src.main:app --reload --app-dir backend
 ```
 
 The API will be available at `http://localhost:8000`
@@ -163,9 +146,9 @@ Once running, visit:
 - `POST /api/ai/chat/stream` - Stream AI responses
 - `GET /api/ai/models` - List available AI models
 
-### IPFS Storage
-- `POST /api/ipfs/upload` - Upload file to IPFS
-- `GET /api/ipfs/{cid}` - Download file from IPFS
+### Object Storage
+- `POST /api/storage/upload` - Upload file to object storage
+- `GET /api/storage/{key}` - Download file by storage key
 
 ### SMS
 - `POST /api/sms/send` - Send SMS
@@ -185,60 +168,39 @@ Once running, visit:
 
 ## Deployment
 
-### Option 1: Docker Compose (Development/Production)
+### Native Docker Compose (recommended)
 
 ```bash
-# Start all services
-docker-compose up -d
+cp .env.example .env
+# Set at least SECRET_KEY and POSTGRES_PASSWORD for production
+openssl rand -hex 32   # paste into SECRET_KEY
+openssl rand -hex 16   # paste into POSTGRES_PASSWORD
+
+# Development
+docker compose up --build
+
+# Production (API + frontend + Postgres + Redis + Nginx)
+docker compose -f docker-compose.prod.yml up --build -d
 
 # View logs
-docker-compose logs -f api
+docker compose -f docker-compose.prod.yml logs -f api
 
-# Stop all services
-docker-compose down
+# Stop
+docker compose -f docker-compose.prod.yml down
 ```
 
-### Option 2: Fly.io (Recommended for Production)
+Point Twilio SMS/voice webhooks at your public host, for example:
+- `https://your-domain/api/sms/webhook`
+- `https://your-domain/api/voice/webhook`
 
-```bash
-# Install Fly.io CLI
-curl -L https://fly.io/install.sh | sh
+### Manual Deployment
 
-# Login
-flyctl auth login
-
-# Create app
-flyctl apps create ai-multichannel-system
-
-# Set secrets (API keys)
-flyctl secrets set \
-  OPENROUTER_API_KEY=your_openrouter_key \
-  WEB3_STORAGE_TOKEN=your_web3_storage_token \
-  TWILIO_ACCOUNT_SID=your_twilio_sid \
-  TWILIO_AUTH_TOKEN=your_twilio_token \
-  TWILIO_PHONE_NUMBER=+1234567890 \
-  ELEVENLABS_API_KEY=your_elevenlabs_key \
-  SECRET_KEY=$(openssl rand -hex 32) \
-  POSTGRES_PASSWORD=$(openssl rand -hex 16)
-
-# Deploy
-flyctl deploy
-
-# Scale to multiple regions
-flyctl regions add ewr sin ams
-
-# View logs
-flyctl logs
-```
-
-### Option 3: Manual Deployment
-
-1. Deploy PostgreSQL (AWS RDS, Supabase, etc.)
-2. Deploy Redis (AWS ElastiCache, Redis Labs, etc.)
-3. Deploy the API (any cloud provider)
-4. Configure environment variables
-5. Run migrations
-6. Start the application
+1. Deploy PostgreSQL and Redis
+2. Build and run the API image (`Dockerfile` target `production`)
+3. Build and run the frontend image (`frontend/Dockerfile` target `production`)
+4. Put Nginx (or another reverse proxy) in front using `infra/nginx.conf`
+5. Configure environment variables from `.env.example`
+6. Run migrations (`alembic upgrade head`)
 
 ## Configuration
 
@@ -261,8 +223,10 @@ DATABASE_URL=postgresql+asyncpg://user:password@host:5432/ai_multichannel
 OPENROUTER_API_KEY=your_key
 DEFAULT_AI_MODEL=mistralai/mistral-7b-instruct
 
-# IPFS
-WEB3_STORAGE_TOKEN=your_token
+# Object Storage
+S3_BUCKET=your_bucket
+S3_ACCESS_KEY_ID=your_key
+S3_SECRET_ACCESS_KEY=your_secret
 
 # Twilio
 TWILIO_ACCOUNT_SID=your_sid
@@ -304,29 +268,21 @@ pytest tests/ --cov=src --cov-report=html
 ai-multichannel-system/
 ├── backend/                    # Backend API
 │   ├── src/                   # Source code
-│   │   ├── config/            # Configuration
-│   │   ├── models/            # Database models
-│   │   ├── schemas/           # Pydantic schemas
-│   │   ├── services/          # Business logic
-│   │   ├── routes/            # API routes
-│   │   ├── utils/             # Utilities
-│   │   └── main.py            # FastAPI app
 │   ├── requirements.txt       # Python dependencies
 │   ├── alembic/               # Database migrations
 │   └── tests/                 # Tests
 ├── frontend/                  # Frontend (React/Next.js)
 │   ├── src/                   # Source code
 │   ├── public/                # Static files
+│   ├── Dockerfile             # Frontend image
 │   └── package.json           # Node dependencies
 ├── infra/                     # Infrastructure
-│   ├── docker-compose.yml    # Docker Compose
-│   ├── fly.toml               # Fly.io config
-│   ├── nginx.conf             # Nginx config
+│   ├── nginx.conf             # Nginx reverse proxy
 │   └── init-db.sql            # Database init
 ├── .env.example               # Environment template
-├── .gitignore                 # Git ignore
-├── Dockerfile                 # Docker build
-├── docker-compose.yml         # Docker Compose
+├── Dockerfile                 # Backend image
+├── docker-compose.yml         # Local development stack
+├── docker-compose.prod.yml    # Production stack
 └── README.md                  # This file
 ```
 
@@ -334,14 +290,14 @@ ai-multichannel-system/
 
 | Service | Estimated Cost (Monthly) | Notes |
 |---------|------------------------|-------|
-| Fly.io | $5-10 | API hosting |
+| Docker host / VPS | $5-20 | Native Docker hosting |
 | OpenRouter | $1-10 | AI model usage |
-| Web3.Storage | $0-5 | IPFS storage (5GB free) |
+| S3 / object storage | $0-5 | File storage |
 | Twilio | $1-10 | SMS/Voice usage |
 | ElevenLabs | $1-5 | TTS usage |
-| PostgreSQL | $0-15 | Database (free tiers available) |
-| Redis | $0-5 | Cache (free tiers available) |
-| **Total** | **$8-50** | Depends on usage |
+| PostgreSQL | $0-15 | Included in Compose or managed |
+| Redis | $0-5 | Included in Compose or managed |
+| **Total** | **$7-65** | Depends on usage |
 
 ## Security Considerations
 
@@ -375,12 +331,10 @@ MIT License - see LICENSE file for details.
 
 - [FastAPI](https://fastapi.tiangolo.com/) - Web framework
 - [OpenRouter](https://openrouter.ai/) - AI model aggregation
-- [Web3.Storage](https://web3.storage/) - IPFS storage
 - [Twilio](https://twilio.com/) - SMS and voice
 - [ElevenLabs](https://elevenlabs.io/) - Text-to-speech
-- [Fly.io](https://fly.io/) - Deployment platform
+- [Docker](https://www.docker.com/) - Native container deployment
 
 ---
 
 **Built with ❤️ for the AI community**
-yip

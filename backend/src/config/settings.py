@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def normalize_database_url(cls, v: str) -> str:
-        """Ensure async SQLAlchemy uses asyncpg (Fly sets postgres:// URLs)."""
+        """Ensure async SQLAlchemy uses asyncpg (Docker/hosted Postgres often use postgres://)."""
         if not isinstance(v, str):
             return v
         v = v.strip()
@@ -125,12 +125,12 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """Return CORS origins as a list"""
         return self._parse_cors_list_value(self.CORS_ORIGINS)
-    
+
     @property
     def cors_allow_methods_list(self) -> list[str]:
         """Return allowed CORS methods as a list"""
         return self._parse_cors_list_value(self.CORS_ALLOW_METHODS)
-    
+
     @property
     def cors_allow_headers_list(self) -> list[str]:
         """Return allowed CORS headers as a list"""
