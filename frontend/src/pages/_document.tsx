@@ -9,7 +9,6 @@ export default function Document() {
         <meta name="description" content="AI Multichannel System - Voice, SMS, and Object Storage" />
         <meta name="keywords" content="AI, chat, voice, SMS, storage, multichannel" />
         <meta name="author" content="AI Multichannel System" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#3b82f6" />
         
         {/* Favicon */}
@@ -40,9 +39,6 @@ export default function Document() {
         
         {/* Robots */}
         <meta name="robots" content="index, follow" />
-        
-        {/* Scripts */}
-        <script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
       </Head>
       <body className="antialiased">
         <Main />

@@ -18,7 +18,7 @@ import {
   ChannelType,
   AIModel,
 } from '@/types';
-import { api, setAuthToken, clearAuth, getSavedUser } from '@/services/api';
+import api, { setAuthToken, clearAuth, getSavedUser } from '@/services/api';
 import { initSocket, disconnectSocket, cleanupSocket } from '@/services/socket';
 
 // ============================================
