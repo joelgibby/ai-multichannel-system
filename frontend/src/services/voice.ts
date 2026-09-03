@@ -1,7 +1,6 @@
 // AI Multichannel System - Voice Recording Service
 // Handles audio recording, playback, and processing
 
-import RecordRTC, { StereoAudioRecorder } from 'recordrtc';
 import toast from 'react-hot-toast';
 
 import {
@@ -9,6 +8,28 @@ import {
   RecordingOptions,
   PlaybackOptions,
 } from '@/types';
+
+type AudioRecorder = {
+  startRecording: () => void;
+  stopRecording: () => void;
+  pauseRecording: () => void;
+  resumeRecording: () => void;
+  ondataavailable?: (blob: Blob) => void;
+  onstop?: () => void;
+  onerror?: (error: Error) => void;
+  state?: string;
+};
+
+async function loadRecordRTC(): Promise<new (stream: MediaStream, options: Record<string, unknown>) => AudioRecorder> {
+  if (typeof window === 'undefined') {
+    throw new Error('RecordRTC can only load in the browser');
+  }
+  const mod = await import('recordrtc');
+  return (mod.default ?? mod) as new (
+    stream: MediaStream,
+    options: Record<string, unknown>
+  ) => AudioRecorder;
+}
 
 // Default settings
 const DEFAULT_RECORDING_OPTIONS: RecordingOptions = {
@@ -24,7 +45,7 @@ const DEFAULT_PLAYBACK_OPTIONS: PlaybackOptions = {
 
 // State
 let mediaStream: MediaStream | null = null;
-let recorder: StereoAudioRecorder | null = null;
+let recorder: AudioRecorder | null = null;
 let audioChunks: Blob[] = [];
 let audioBlob: Blob | null = null;
 let audioUrl: string | null = null;
@@ -65,15 +86,16 @@ export const initRecording = async (
       video: false,
     });
     
-    // Create recorder
+    // RecordRTC overwrites global URL if it loads on the Next.js server
+    const RecordRTC = await loadRecordRTC();
     recorder = new RecordRTC(mediaStream, {
       type: 'audio',
       mimeType: recordingOptions.mimeType,
       sampleRate: recordingOptions.sampleRate,
       bitsPerSecond: recordingOptions.bitsPerSecond,
       numberOfAudioChannels: 1,
-      timeSlice: 1000, // Send data every 1 second
-    }) as StereoAudioRecorder;
+      timeSlice: 1000,
+    });
     
     // Setup audio visualization
     setupAudioVisualization(mediaStream);
