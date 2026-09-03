@@ -1,6 +1,6 @@
 // AI Multichannel System - Settings Modal Component
 import React, { useState, useEffect } from 'react';
-import { Settings, X, Brain, Thermometer, Type, Voice, Moon, Sun, Monitor, ChevronDown, Check } from 'lucide-react';
+import { Settings, Brain, Thermometer, Type, Mic, Moon, Sun, Monitor } from 'lucide-react';
 
 import { AIModel } from '@/types';
 import { Button } from './Button';
@@ -144,8 +144,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="mistralai/mistral-7b-instruct">
-                    Mistral 7B (Default)
+                  <SelectItem value="mistralai/mistral-nemo">
+                    Mistral Nemo (Default)
                   </SelectItem>
                 )}
               </SelectContent>
@@ -197,7 +197,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Voice Section */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium flex items-center gap-2">
-              <Voice className="w-4 h-4" />
+              <Mic className="w-4 h-4" />
               Voice Settings
             </h3>
             <Select

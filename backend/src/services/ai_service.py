@@ -16,7 +16,7 @@ from ..models.message import MessageRole
 class ChatMessage(BaseModel):
     """Message structure for AI chat"""
     role: MessageRole
-    content: str
+    content: str = ""
 
 
 class ChatRequest(BaseModel):
@@ -40,9 +40,28 @@ class ChatResponse(BaseModel):
     created: int
     content: str
     role: str
-    finish_reason: str
-    usage: dict[str, int]
-    latency_ms: float
+    finish_reason: str = "stop"
+    usage: dict[str, Any] = {}
+    latency_ms: float = 0.0
+
+
+def _raise_for_openrouter(response: httpx.Response) -> None:
+    """Raise a readable error that includes OpenRouter's response body."""
+    if response.is_success:
+        return
+    detail: Any = response.text
+    try:
+        payload = response.json()
+        error = payload.get("error")
+        if isinstance(error, dict):
+            detail = error.get("message") or error
+        elif error:
+            detail = error
+        elif payload.get("message"):
+            detail = payload["message"]
+    except Exception:
+        pass
+    raise ValueError(f"OpenRouter {response.status_code}: {detail}")
 
 
 class AIService:
@@ -51,7 +70,7 @@ class AIService:
     def __init__(self):
         self.settings = get_settings()
         self.client = httpx.AsyncClient(
-            base_url=self.settings.OPENROUTER_BASE_URL,
+            base_url=self.settings.OPENROUTER_BASE_URL.rstrip("/") + "/",
             timeout=120.0,
             headers={
                 "Content-Type": "application/json",
@@ -94,9 +113,11 @@ class AIService:
         
         model = model or self.settings.DEFAULT_AI_MODEL
         
-        # Convert messages to the format expected by OpenRouter
         formatted_messages = [
-            {"role": msg.role.value, "content": msg.content}
+            {
+                "role": msg.role.value if hasattr(msg.role, "value") else str(msg.role),
+                "content": msg.content or "",
+            }
             for msg in messages
         ]
         
@@ -124,25 +145,27 @@ class AIService:
         
         latency_ms = (time.time() - start_time) * 1000
         
+        choice = (response.get("choices") or [{}])[0]
+        message = choice.get("message") or {}
         return ChatResponse(
-            id=response.get("id", ""),
-            model=response.get("model", model),
-            created=response.get("created", int(time.time())),
-            content=response.get("choices", [{}])[0].get("message", {}).get("content", ""),
-            role=response.get("choices", [{}])[0].get("message", {}).get("role", "assistant"),
-            finish_reason=response.get("choices", [{}])[0].get("finish_reason", "stop"),
-            usage=response.get("usage", {}),
+            id=response.get("id") or "",
+            model=response.get("model") or model,
+            created=response.get("created") or int(time.time()),
+            content=message.get("content") or "",
+            role=message.get("role") or "assistant",
+            finish_reason=choice.get("finish_reason") or "stop",
+            usage=response.get("usage") or {},
             latency_ms=latency_ms,
         )
     
     async def _chat_non_stream(self, request_data: dict, headers: dict) -> dict:
         """Handle non-streaming chat request"""
         response = await self.client.post(
-            "/chat/completions",
+            "chat/completions",
             json=request_data,
             headers=headers,
         )
-        response.raise_for_status()
+        _raise_for_openrouter(response)
         return response.json()
     
     async def _chat_stream(
@@ -156,11 +179,11 @@ class AIService:
         
         async with self.client.stream(
             "POST",
-            "/chat/completions",
+            "chat/completions",
             json=request_data,
             headers=headers,
         ) as response:
-            response.raise_for_status()
+            _raise_for_openrouter(response)
             async for line in response.aiter_lines():
                 if line:
                     line = line.strip()
@@ -222,7 +245,10 @@ class AIService:
         model = model or self.settings.DEFAULT_AI_MODEL
         
         formatted_messages = [
-            {"role": msg.role.value, "content": msg.content}
+            {
+                "role": msg.role.value if hasattr(msg.role, "value") else str(msg.role),
+                "content": msg.content or "",
+            }
             for msg in messages
         ]
         
@@ -241,11 +267,11 @@ class AIService:
         
         async with self.client.stream(
             "POST",
-            "/chat/completions",
+            "chat/completions",
             json=request_data,
             headers=headers,
         ) as response:
-            response.raise_for_status()
+            _raise_for_openrouter(response)
             async for line in response.aiter_lines():
                 if line:
                     line = line.strip()
@@ -268,12 +294,12 @@ class AIService:
             raise ValueError("OPENROUTER_API_KEY not configured")
         
         response = await self.client.get(
-            "/models",
+            "models",
             headers={
                 "Authorization": f"Bearer {self.settings.OPENROUTER_API_KEY}",
             },
         )
-        response.raise_for_status()
+        _raise_for_openrouter(response)
         return response.json().get("data", [])
     
     async def get_model_info(self, model_id: str) -> dict[str, Any]:
@@ -282,12 +308,12 @@ class AIService:
             raise ValueError("OPENROUTER_API_KEY not configured")
         
         response = await self.client.get(
-            f"/models/{model_id}",
+            f"models/{model_id}",
             headers={
                 "Authorization": f"Bearer {self.settings.OPENROUTER_API_KEY}",
             },
         )
-        response.raise_for_status()
+        _raise_for_openrouter(response)
         return response.json()
     
     async def close(self) -> None:

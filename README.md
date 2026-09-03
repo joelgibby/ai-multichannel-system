@@ -221,7 +221,7 @@ DATABASE_URL=postgresql+asyncpg://user:password@host:5432/ai_multichannel
 
 # AI
 OPENROUTER_API_KEY=your_key
-DEFAULT_AI_MODEL=mistralai/mistral-7b-instruct
+DEFAULT_AI_MODEL=mistralai/mistral-nemo
 
 # Object Storage
 S3_BUCKET=your_bucket

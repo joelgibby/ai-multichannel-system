@@ -26,7 +26,7 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
-      DEFAULT_AI_MODEL: ${DEFAULT_AI_MODEL:-mistralai/mistral-7b-instruct}
+      DEFAULT_AI_MODEL: ${DEFAULT_AI_MODEL:-mistralai/mistral-nemo}
       S3_BUCKET: ${S3_BUCKET:-}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}

@@ -5,28 +5,44 @@ import React from 'react';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import { cn } from '@/utils/cn';
 
-interface SliderProps extends React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> {
+type SliderRootProps = React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>;
+
+interface SliderProps extends Omit<SliderRootProps, 'value' | 'defaultValue' | 'onValueChange'> {
   showValue?: boolean;
   label?: string;
+  value?: number | number[];
+  defaultValue?: number | number[];
+  onValueChange?: (value: number) => void;
+}
+
+function toSliderValues(value: number | number[] | undefined): number[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const values = Array.isArray(value) ? value : [value];
+  return values.map((item) => Number(item)).filter((item) => Number.isFinite(item));
 }
 
 const Slider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
   SliderProps
->(({ className, showValue = false, label, value, onValueChange, ...props }, ref) => {
-  const [displayValue, setDisplayValue] = React.useState(value || props.defaultValue || 0);
+>(({ className, showValue = false, label, value, defaultValue, onValueChange, ...props }, ref) => {
+  const sliderValue = toSliderValues(value);
+  const sliderDefault = toSliderValues(defaultValue);
+  const [displayValue, setDisplayValue] = React.useState(
+    sliderValue?.[0] ?? sliderDefault?.[0] ?? 0
+  );
 
   React.useEffect(() => {
-    if (value !== undefined) {
-      setDisplayValue(value);
+    if (sliderValue?.[0] !== undefined) {
+      setDisplayValue(sliderValue[0]);
     }
-  }, [value]);
+  }, [sliderValue?.[0]]);
 
   const handleValueChange = (newValue: number[]) => {
-    if (onValueChange) {
-      onValueChange(newValue);
-    }
-    setDisplayValue(newValue[0]);
+    const next = newValue[0];
+    setDisplayValue(next);
+    onValueChange?.(next);
   };
 
   return (
@@ -39,7 +55,8 @@ const Slider = React.forwardRef<
       <SliderPrimitive.Root
         ref={ref}
         className={cn('relative flex w-full touch-none select-none items-center', className)}
-        value={value}
+        value={sliderValue}
+        defaultValue={sliderDefault}
         onValueChange={handleValueChange}
         {...props}
       >

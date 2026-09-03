@@ -1,12 +1,28 @@
 """
 Database configuration and session management
 """
-from typing import AsyncGenerator
+from enum import Enum
+from typing import AsyncGenerator, Type, TypeVar
 
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from .settings import get_settings
+
+EnumT = TypeVar("EnumT", bound=Enum)
+
+
+def pg_enum(enum_cls: Type[EnumT], name: str) -> SQLEnum:
+    """PostgreSQL enum that stores member values (user) instead of names (USER)."""
+    return SQLEnum(
+        enum_cls,
+        name=name,
+        values_callable=lambda members: [member.value for member in members],
+        native_enum=True,
+        create_constraint=False,
+        validate_strings=True,
+    )
 
 
 class Base(DeclarativeBase):

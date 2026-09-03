@@ -6,10 +6,10 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Any
 
-from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, JSON, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ..config.database import Base
+from ..config.database import Base, pg_enum
 from ..schemas.base import BaseSchema
 
 
@@ -52,19 +52,19 @@ class Message(Base):
     
     # Content
     role: Mapped[MessageRole] = mapped_column(
-        SQLEnum(MessageRole),
+        pg_enum(MessageRole, "messagerole"),
         nullable=False,
         index=True,
     )
     content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     message_type: Mapped[MessageType] = mapped_column(
-        SQLEnum(MessageType),
+        pg_enum(MessageType, "messagetype"),
         default=MessageType.TEXT,
     )
     
     # Metadata
     status: Mapped[MessageStatus] = mapped_column(
-        SQLEnum(MessageStatus),
+        pg_enum(MessageStatus, "messagestatus"),
         default=MessageStatus.COMPLETED,
         index=True,
     )

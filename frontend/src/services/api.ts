@@ -84,6 +84,24 @@ api.interceptors.response.use(
   }
 );
 
+export const getApiErrorMessage = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as { detail?: unknown; error?: { detail?: string }; message?: string } | undefined;
+    const detail = data?.detail;
+    if (Array.isArray(detail)) {
+      return detail.map((item: { msg?: string }) => item.msg || JSON.stringify(item)).join('; ');
+    }
+    if (typeof detail === 'string' && detail.trim()) {
+      return detail;
+    }
+    return data?.error?.detail || data?.message || error.message || 'Request failed';
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'An unexpected error occurred';
+};
+
 // Helper function to handle API responses
 export const handleResponse = async <T>(
   promise: Promise<AxiosResponse<APIResponse<T>>>
@@ -124,8 +142,11 @@ export const chatWithAI = async (
   } = {}
 ): Promise<ChatResponse> => {
   return handleResponse(
-    api.post<ChatResponse>('/api/ai/chat', {
-      messages,
+    api.post<APIResponse<ChatResponse>>('/api/ai/chat', {
+      messages: messages.map((message) => ({
+        role: message.role,
+        content: message.content || '',
+      })),
       ...options,
     })
   );
