@@ -549,9 +549,22 @@ async def socket_status(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# Mount static files (for frontend)
-if settings.DEBUG:
-    app.mount("/static", StaticFiles(directory="../frontend/public"), name="static")
+def _frontend_static_dir() -> Optional[Path]:
+    """Resolve frontend/public when present; skip in Docker where only backend is mounted."""
+    candidates = [
+        Path(__file__).resolve().parents[2] / "frontend" / "public",
+        Path("/frontend/public"),
+    ]
+    for path in candidates:
+        if path.is_dir():
+            return path
+    return None
+
+
+# Mount static files (for frontend) when the directory exists
+_static_dir = _frontend_static_dir()
+if settings.DEBUG and _static_dir is not None:
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 LEGAL_DIR = Path(__file__).resolve().parent.parent / "static"
 
