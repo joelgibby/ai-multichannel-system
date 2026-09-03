@@ -200,6 +200,12 @@ class ConversationService:
         Returns:
             Created message
         """
+        if hasattr(message_data, "model_dump"):
+            message_data = message_data.model_dump(exclude_none=True)
+        elif hasattr(message_data, "dict"):
+            message_data = message_data.dict(exclude_none=True)
+        message_data.pop("conversation_id", None)
+
         async with self._db() as session:
             message = Message(
                 **message_data,

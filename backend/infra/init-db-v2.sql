@@ -11,13 +11,13 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Create Enum Types
 -- ============================================
 
-CREATE TYPE channeltype AS ENUM ('web', 'sms', 'voice', 'mobile', 'email');
-CREATE TYPE conversationstatus AS ENUM ('active', 'archived', 'deleted');
-CREATE TYPE messagerole AS ENUM ('user', 'assistant', 'system');
-CREATE TYPE messagetype AS ENUM ('text', 'audio', 'image', 'video', 'file', 'command');
-CREATE TYPE messagestatus AS ENUM ('pending', 'processing', 'completed', 'failed');
-CREATE TYPE filetype AS ENUM ('audio', 'image', 'video', 'document', 'text', 'other');
-CREATE TYPE storageprovider AS ENUM ('s3', 'local');
+DO $$ BEGIN CREATE TYPE channeltype AS ENUM ('web', 'sms', 'voice', 'mobile', 'email'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE conversationstatus AS ENUM ('active', 'archived', 'deleted'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE messagerole AS ENUM ('user', 'assistant', 'system'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE messagetype AS ENUM ('text', 'audio', 'image', 'video', 'file', 'command'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE messagestatus AS ENUM ('pending', 'processing', 'completed', 'failed'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE filetype AS ENUM ('audio', 'image', 'video', 'document', 'text', 'other'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE storageprovider AS ENUM ('s3', 'local'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============================================
 -- Create Tables (in order to avoid circular dependencies)
@@ -103,8 +103,15 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 -- 5. Add message_id foreign key to file_storage (now that messages exists)
-ALTER TABLE file_storage ADD CONSTRAINT fk_file_storage_message_id 
-    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_file_storage_message_id'
+    ) THEN
+        ALTER TABLE file_storage ADD CONSTRAINT fk_file_storage_message_id
+            FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- 6. Sessions table (depends on users)
 CREATE TABLE IF NOT EXISTS sessions (

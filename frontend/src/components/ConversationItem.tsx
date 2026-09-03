@@ -1,10 +1,9 @@
 // AI Multichannel System - Conversation Item Component
 import React from 'react';
-import { MessageSquare, Trash2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { MessageSquare, Trash2, CheckCircle, AlertCircle, Globe, Smartphone, Mic, Mail } from 'lucide-react';
 import { useRouter } from 'next/router';
 
 import { Conversation, ChannelType } from '@/types';
-import { Badge } from './Badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from './Tooltip';
 
 interface ConversationItemProps {
@@ -31,31 +30,6 @@ const CHANNEL_COLORS: Record<ChannelType, string> = {
   mobile: 'text-emerald-500',
   email: 'text-orange-500',
 };
-
-// Import icons
-const Globe = () => (
-  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m0 18a9 9 0 009-9m-9 9a9 9 0 00-9-9" />
-  </svg>
-);
-
-const Smartphone = () => (
-  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-  </svg>
-);
-
-const Mic = () => (
-  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-  </svg>
-);
-
-const Mail = () => (
-  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-  </svg>
-);
 
 export const ConversationItem: React.FC<ConversationItemProps> = ({
   conversation,

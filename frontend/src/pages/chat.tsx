@@ -1,6 +1,7 @@
 // AI Multichannel System - Chat Page
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { Mic, MicOff, Send, Paperclip, X, Settings, Plus, Loader2, Bot, User, FileText, Image, Volume2, StopCircle } from 'lucide-react';
 
@@ -9,10 +10,14 @@ import { initRecording, startRecording, stopRecording, cleanupRecording, getReco
 import { ChannelType } from '@/types';
 import { Sidebar } from '@/components/Sidebar';
 import { MessageBubble } from '@/components/MessageBubble';
-import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { SettingsModal } from '@/components/SettingsModal';
 import { ChannelSelector } from '@/components/ChannelSelector';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+
+const VoiceRecorder = dynamic(
+  () => import('@/components/VoiceRecorder').then((mod) => mod.VoiceRecorder),
+  { ssr: false }
+);
 
 // Typing indicator component
 const TypingIndicator: React.FC = () => (

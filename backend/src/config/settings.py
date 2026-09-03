@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     # OpenRouter AI
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-    DEFAULT_AI_MODEL: str = "mistralai/mistral-7b-instruct"
+    DEFAULT_AI_MODEL: str = "mistralai/mistral-nemo"
     
     # Object Storage (S3-compatible)
     S3_BUCKET: Optional[str] = None

@@ -1,6 +1,6 @@
 // AI Multichannel System - Settings Modal Component
 import React, { useState, useEffect } from 'react';
-import { Settings, X, Brain, Thermometer, Type, Voice, Moon, Sun, Monitor, ChevronDown, Check } from 'lucide-react';
+import { Settings, Brain, Thermometer, Type, Mic, Moon, Sun, Monitor } from 'lucide-react';
 
 import { AIModel } from '@/types';
 import { Button } from './Button';
@@ -8,6 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './Select';
 import { Slider } from './Slider';
 import { AVAILABLE_VOICES } from '@/services/voice';
+
+function formatTokenPrice(value: unknown): string {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount.toFixed(6) : '0.000000';
+}
 
 interface SettingsModalProps {
   aiModel: string;
@@ -133,14 +138,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="flex flex-col">
                         <span className="font-medium">{model.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          {model.provider} - ${(model.pricing?.prompt || 0).toFixed(6)}/token
+                          {model.provider} - ${formatTokenPrice(model.pricing?.prompt)}/token
                         </span>
                       </div>
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="mistralai/mistral-7b-instruct">
-                    Mistral 7B (Default)
+                  <SelectItem value="mistralai/mistral-nemo">
+                    Mistral Nemo (Default)
                   </SelectItem>
                 )}
               </SelectContent>
@@ -192,7 +197,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Voice Section */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium flex items-center gap-2">
-              <Voice className="w-4 h-4" />
+              <Mic className="w-4 h-4" />
               Voice Settings
             </h3>
             <Select

@@ -51,7 +51,7 @@ export interface ChatResponse {
   content: string;
   role: string;
   finish_reason: string;
-  usage: {
+  usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
@@ -66,8 +66,8 @@ export interface AIModel {
   description: string;
   context_length: number;
   pricing: {
-    prompt: number;
-    completion: number;
+    prompt: number | string;
+    completion: number | string;
   };
   provider: string;
   tags: string[];

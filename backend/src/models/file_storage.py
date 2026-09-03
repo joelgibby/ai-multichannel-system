@@ -6,10 +6,10 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ..config.database import Base
+from ..config.database import Base, pg_enum
 from ..schemas.base import BaseSchema
 
 
@@ -45,7 +45,7 @@ class FileStorage(Base):
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     stored_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_type: Mapped[FileType] = mapped_column(
-        SQLEnum(FileType),
+        pg_enum(FileType, "filetype"),
         default=FileType.OTHER,
         index=True,
     )
@@ -54,7 +54,7 @@ class FileStorage(Base):
     
     # Storage info
     provider: Mapped[StorageProvider] = mapped_column(
-        SQLEnum(StorageProvider),
+        pg_enum(StorageProvider, "storageprovider"),
         default=StorageProvider.S3,
         index=True,
     )

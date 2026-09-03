@@ -62,10 +62,15 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<APIResponse<any>>) => {
     // Handle errors globally
-    const errorMessage = error.response?.data?.error?.detail ||
-      error.response?.data?.message ||
-      error.message ||
-      'An unexpected error occurred';
+    const data = error.response?.data as { detail?: unknown; error?: { detail?: string }; message?: string } | undefined;
+    const fastapiDetail = data?.detail;
+    const errorMessage = Array.isArray(fastapiDetail)
+      ? fastapiDetail.map((item: { msg?: string; loc?: unknown[] }) => item.msg || JSON.stringify(item)).join('; ')
+      : (typeof fastapiDetail === 'string' ? fastapiDetail : undefined)
+        || data?.error?.detail
+        || data?.message
+        || error.message
+        || 'An unexpected error occurred';
     
     // Don't show toast for cancelled requests
     if (error.code !== 'ECONNABORTED') {
@@ -78,6 +83,24 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export const getApiErrorMessage = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as { detail?: unknown; error?: { detail?: string }; message?: string } | undefined;
+    const detail = data?.detail;
+    if (Array.isArray(detail)) {
+      return detail.map((item: { msg?: string }) => item.msg || JSON.stringify(item)).join('; ');
+    }
+    if (typeof detail === 'string' && detail.trim()) {
+      return detail;
+    }
+    return data?.error?.detail || data?.message || error.message || 'Request failed';
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'An unexpected error occurred';
+};
 
 // Helper function to handle API responses
 export const handleResponse = async <T>(
@@ -119,8 +142,11 @@ export const chatWithAI = async (
   } = {}
 ): Promise<ChatResponse> => {
   return handleResponse(
-    api.post<ChatResponse>('/api/ai/chat', {
-      messages,
+    api.post<APIResponse<ChatResponse>>('/api/ai/chat', {
+      messages: messages.map((message) => ({
+        role: message.role,
+        content: message.content || '',
+      })),
       ...options,
     })
   );

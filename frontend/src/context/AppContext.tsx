@@ -18,7 +18,7 @@ import {
   ChannelType,
   AIModel,
 } from '@/types';
-import { api, setAuthToken, clearAuth, getSavedUser } from '@/services/api';
+import api, { setAuthToken, clearAuth, getSavedUser, getApiErrorMessage } from '@/services/api';
 import { initSocket, disconnectSocket, cleanupSocket } from '@/services/socket';
 
 // ============================================
@@ -122,7 +122,7 @@ const initialFileState: FileState = {
 };
 
 const initialSettingsState: SettingsState = {
-  aiModel: 'mistralai/mistral-7b-instruct',
+  aiModel: 'mistralai/mistral-nemo',
   temperature: 0.7,
   maxTokens: 4096,
   voiceId: '21m00Tcm4TlvDq8ikWAM',
@@ -706,7 +706,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       // Send to API
       const response = await api.chatWithAI(
         [
-          ...state.chat.messages.filter((m) => m.role !== 'system'),
+          ...state.chat.messages.filter((m) => m.role !== 'system' && m.content),
           { role: 'user', content },
         ],
         {
@@ -726,11 +726,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         metadata: {
           model: response.model,
           finish_reason: response.finish_reason,
-          tokens_used: response.usage.total_tokens,
+          tokens_used: response.usage?.total_tokens,
           latency_ms: response.latency_ms,
         },
         ai_model: response.model,
-        tokens_used: response.usage.total_tokens,
+        tokens_used: response.usage?.total_tokens,
         latency_ms: response.latency_ms,
         conversation_id: id,
         created_at: new Date().toISOString(),
@@ -752,9 +752,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       });
 
     } catch (error) {
+      const message = getApiErrorMessage(error);
       console.error('Failed to send message:', error);
-      setChatError('Failed to send message');
-      toast.error('Failed to send message');
+      setChatError(message);
+      toast.error(message);
     } finally {
       setChatLoading(false);
     }
