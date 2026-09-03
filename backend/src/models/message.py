@@ -134,7 +134,7 @@ class MessageBase(BaseSchema):
 
 class MessageCreate(MessageBase):
     """Schema for creating a message"""
-    conversation_id: uuid.UUID
+    conversation_id: Optional[uuid.UUID] = None
     ai_model: Optional[str] = None
 
 

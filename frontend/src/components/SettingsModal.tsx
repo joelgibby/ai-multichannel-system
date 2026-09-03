@@ -9,6 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Slider } from './Slider';
 import { AVAILABLE_VOICES } from '@/services/voice';
 
+function formatTokenPrice(value: unknown): string {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount.toFixed(6) : '0.000000';
+}
+
 interface SettingsModalProps {
   aiModel: string;
   temperature: number;
@@ -133,7 +138,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="flex flex-col">
                         <span className="font-medium">{model.name}</span>
                         <span className="text-xs text-muted-foreground">
-                          {model.provider} - ${(model.pricing?.prompt || 0).toFixed(6)}/token
+                          {model.provider} - ${formatTokenPrice(model.pricing?.prompt)}/token
                         </span>
                       </div>
                     </SelectItem>

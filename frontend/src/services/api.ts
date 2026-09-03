@@ -62,10 +62,15 @@ api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<APIResponse<any>>) => {
     // Handle errors globally
-    const errorMessage = error.response?.data?.error?.detail ||
-      error.response?.data?.message ||
-      error.message ||
-      'An unexpected error occurred';
+    const data = error.response?.data as { detail?: unknown; error?: { detail?: string }; message?: string } | undefined;
+    const fastapiDetail = data?.detail;
+    const errorMessage = Array.isArray(fastapiDetail)
+      ? fastapiDetail.map((item: { msg?: string; loc?: unknown[] }) => item.msg || JSON.stringify(item)).join('; ')
+      : (typeof fastapiDetail === 'string' ? fastapiDetail : undefined)
+        || data?.error?.detail
+        || data?.message
+        || error.message
+        || 'An unexpected error occurred';
     
     // Don't show toast for cancelled requests
     if (error.code !== 'ECONNABORTED') {

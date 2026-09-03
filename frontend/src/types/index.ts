@@ -66,8 +66,8 @@ export interface AIModel {
   description: string;
   context_length: number;
   pricing: {
-    prompt: number;
-    completion: number;
+    prompt: number | string;
+    completion: number | string;
   };
   provider: string;
   tags: string[];

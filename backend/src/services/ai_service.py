@@ -21,7 +21,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     """Request structure for AI chat"""
-    model: str
+    model: Optional[str] = None
     messages: list[ChatMessage]
     temperature: float = 0.7
     max_tokens: int = 4096

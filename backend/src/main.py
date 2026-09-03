@@ -35,7 +35,7 @@ from .services import (
     get_socket_service,
     get_voice_service,
 )
-from .services.ai_service import AIService, ChatMessage, ChatResponse
+from .services.ai_service import AIService, ChatMessage, ChatRequest, ChatResponse
 from .services.conversation_service import ConversationService
 from .services.s3_service import S3Service, S3UploadResult, get_s3_service
 from .services.sms_service import IncomingSMS, SMSMessage, SMSResponse, SMSService
@@ -156,11 +156,7 @@ async def health_check() -> SuccessResponse[dict[str, str]]:
 # AI Endpoints
 @app.post("/api/ai/chat", response_model=SuccessResponse[ChatResponse])
 async def chat_with_ai(
-    messages: list[ChatMessage],
-    model: Optional[str] = None,
-    temperature: float = 0.7,
-    max_tokens: int = 4096,
-    stream: bool = False,
+    request: ChatRequest,
     ai_service: AIService = Depends(get_ai_service_dep),
 ) -> SuccessResponse[ChatResponse]:
     """
@@ -170,11 +166,11 @@ async def chat_with_ai(
     """
     try:
         response = await ai_service.chat(
-            messages=messages,
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=stream,
+            messages=request.messages,
+            model=request.model,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            stream=request.stream,
         )
         return SuccessResponse(data=response)
     except Exception as e:
@@ -183,10 +179,7 @@ async def chat_with_ai(
 
 @app.post("/api/ai/chat/stream")
 async def chat_with_ai_stream(
-    messages: list[ChatMessage],
-    model: Optional[str] = None,
-    temperature: float = 0.7,
-    max_tokens: int = 4096,
+    request: ChatRequest,
     ai_service: AIService = Depends(get_ai_service_dep),
 ):
     """
@@ -196,10 +189,10 @@ async def chat_with_ai_stream(
     """
     try:
         generator = ai_service.chat_stream(
-            messages=messages,
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
+            messages=request.messages,
+            model=request.model,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
         )
         
         async def generate():
