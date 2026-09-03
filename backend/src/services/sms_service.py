@@ -31,6 +31,9 @@ class SMSResponse(BaseModel):
     num_media: int = 0
 
 
+SMS_BODY_MAX_LENGTH = 1600
+
+
 class IncomingSMS(BaseModel):
     """Incoming SMS structure from Twilio"""
     message_sid: str
@@ -40,6 +43,15 @@ class IncomingSMS(BaseModel):
     num_media: int = 0
     media_urls: list[str] = Field(default_factory=list)
     profile_name: Optional[str] = None
+
+
+def truncate_sms_body(body: str, max_length: int = SMS_BODY_MAX_LENGTH) -> str:
+    """Trim an SMS body to Twilio's character limit."""
+    if len(body) <= max_length:
+        return body
+    if max_length <= 1:
+        return body[:max_length]
+    return body[: max_length - 1] + "…"
 
 
 class SMSService:
@@ -184,7 +196,7 @@ class SMSService:
             TwiML XML string
         """
         response = MessagingResponse()
-        response.message(response_body)
+        response.message(truncate_sms_body(response_body))
         
         if media_urls:
             for url in media_urls:

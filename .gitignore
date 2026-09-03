@@ -178,6 +178,7 @@ Dockerfile.*
 docker-build/
 *.docker
 *.container
+fly.toml
 
 # ============
 # Misc

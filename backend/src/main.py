@@ -289,30 +289,24 @@ async def sms_webhook(
     conversation_service: ConversationService = Depends(get_conversation_service_dep),
 ):
     """
-    Twilio SMS webhook endpoint
-    
-    Receive incoming SMS messages from Twilio.
+    Twilio SMS webhook.
+
+    Point the number's Messaging webhook (HTTP POST) at
+    `{PUBLIC_API_BASE_URL}/api/sms/webhook`.
     """
     try:
-        # Parse form data
         form_data = await request.form()
-        request_data = dict(form_data)
-        
-        # Parse incoming SMS
-        incoming_sms = sms_service.parse_incoming_sms(request_data)
-        
-        # Process the SMS (this would involve AI, conversation management, etc.)
+        incoming_sms = sms_service.parse_incoming_sms(dict(form_data))
         result = await conversation_service.process_sms(incoming_sms)
-        
-        # Generate TwiML response
-        if result.get("response_text"):
-            twiml = sms_service.generate_twiml_response(result["response_text"])
-            return JSONResponse(content={"twiml": twiml}, status_code=200)
-        
-        return JSONResponse(content={"status": "received"}, status_code=200)
+        reply = result.get("response_text") or "I received your message."
+        twiml = sms_service.generate_twiml_response(reply)
+        return Response(content=twiml, media_type="application/xml")
     except Exception as e:
-        logger.error(f"SMS webhook error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"SMS webhook error: {e}", exc_info=True)
+        twiml = sms_service.generate_twiml_response(
+            "Sorry, I couldn't process that message. Please try again."
+        )
+        return Response(content=twiml, media_type="application/xml")
 
 
 # Voice Endpoints
