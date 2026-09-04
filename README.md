@@ -151,14 +151,14 @@ Once running, visit:
 - `GET /api/storage/{key}` - Download file by storage key
 
 ### SMS
-- `POST /api/sms/send` - Send SMS
+- `POST /api/sms/send` - Send SMS (requires `X-API-Key` or Bearer `SMS_SEND_API_KEY`, or a JWT)
 - `POST /api/sms/webhook` - Twilio webhook (for incoming SMS)
 
 ### Twilio SMS Setup
 
 Inbound texts are handled by `POST /api/sms/webhook`. The webhook replies with TwiML only (one outbound message).
 
-1. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER` in `.env`. Docker Compose passes these into the API container.
+1. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER` in `.env`. Docker Compose passes these into the API container. Set `SMS_SEND_API_KEY` (for example `openssl rand -hex 32`) before calling `POST /api/sms/send`. Keep that key off the frontend; the inbound webhook stays unauthenticated so Twilio can reach it.
 2. In the Twilio Console, open your SMS-enabled number → Messaging → **A message comes in**:
    - Webhook: `{PUBLIC_API_BASE_URL}/api/sms/webhook` (HTTP POST)
    - Locally, expose the API with ngrok (or similar) and use that HTTPS URL plus `/api/sms/webhook`

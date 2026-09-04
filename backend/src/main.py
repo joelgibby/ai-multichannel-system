@@ -2,11 +2,14 @@
 Main FastAPI application for AI Multichannel System
 """
 import logging
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Security, status
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -29,6 +32,7 @@ from .models import (
 from .schemas.response import ErrorResponse, SuccessResponse
 from .services import (
     get_ai_service,
+    get_auth_service,
     get_conversation_service,
     get_s3_service,
     get_sms_service,
@@ -130,6 +134,65 @@ def get_voice_service_dep() -> VoiceService:
 
 def get_conversation_service_dep() -> ConversationService:
     return get_conversation_service()
+
+
+_sms_send_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+_sms_send_bearer = HTTPBearer(auto_error=False)
+
+
+def require_sms_send_auth(
+    api_key: Optional[str] = Security(_sms_send_api_key_header),
+    creds: Optional[HTTPAuthorizationCredentials] = Security(_sms_send_bearer),
+) -> None:
+    """Require an API key or a valid JWT before sending SMS."""
+    presented_key = (api_key or "").strip()
+    presented_bearer = (creds.credentials.strip() if creds and creds.credentials else "")
+    expected = (get_settings().SMS_SEND_API_KEY or "").strip()
+
+    if expected:
+        if presented_key and secrets.compare_digest(presented_key, expected):
+            return
+        if presented_bearer and secrets.compare_digest(presented_bearer, expected):
+            return
+
+    if presented_bearer:
+        try:
+            get_auth_service().decode_token(presented_bearer)
+            return
+        except JWTError:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Missing or invalid credentials for sending SMS",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def _twilio_request_payload(request: Request) -> dict[str, str]:
+    """Read Twilio webhook fields from form, JSON, or query string."""
+    content_type = (request.headers.get("content-type") or "").lower()
+    payload: dict[str, str] = {}
+
+    if "application/json" in content_type:
+        body = await request.json()
+        if isinstance(body, dict):
+            payload = {
+                str(key): "" if value is None else str(value)
+                for key, value in body.items()
+            }
+    else:
+        form_data = await request.form()
+        for key, value in form_data.items():
+            if hasattr(value, "read"):
+                continue
+            payload[str(key)] = str(value)
+
+    for key, value in request.query_params.multi_items():
+        if not payload.get(key):
+            payload[str(key)] = str(value)
+
+    return payload
 
 
 # Exception handlers
@@ -264,11 +327,13 @@ async def download_from_storage(
 async def send_sms(
     sms: SMSMessage,
     sms_service: SMSService = Depends(get_sms_service_dep),
+    _: None = Depends(require_sms_send_auth),
 ) -> SuccessResponse[SMSResponse]:
     """
-    Send an SMS message
-    
     Send an SMS via Twilio.
+
+    Requires `X-API-Key` or `Authorization: Bearer` matching `SMS_SEND_API_KEY`,
+    or a valid JWT access token.
     """
     try:
         response = sms_service.send_sms(
@@ -295,8 +360,14 @@ async def sms_webhook(
     `{PUBLIC_API_BASE_URL}/api/sms/webhook`.
     """
     try:
-        form_data = await request.form()
-        incoming_sms = sms_service.parse_incoming_sms(dict(form_data))
+        incoming_sms = sms_service.parse_incoming_sms(
+            await _twilio_request_payload(request)
+        )
+        if not incoming_sms.body.strip():
+            twiml = sms_service.generate_twiml_response(
+                "I didn't get any text. Please send a message."
+            )
+            return Response(content=twiml, media_type="application/xml")
         result = await conversation_service.process_sms(incoming_sms)
         reply = result.get("response_text") or "I received your message."
         twiml = sms_service.generate_twiml_response(reply)

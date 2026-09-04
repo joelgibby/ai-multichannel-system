@@ -26,6 +26,48 @@ from ..services.voice_service import VoiceCall, VoiceService, get_voice_service
 DEFAULT_SMS_REPLY = "I received your message."
 
 
+def coerce_message_role(role: Any) -> MessageRole:
+    """Normalize DB/enum/string roles to MessageRole."""
+    if isinstance(role, MessageRole):
+        return role
+    value = getattr(role, "value", role)
+    text = str(value).strip().lower()
+    try:
+        return MessageRole(text)
+    except ValueError:
+        return MessageRole.USER
+
+
+def build_chat_messages(
+    history: list[Any],
+    *,
+    current_content: str = "",
+    system_prompt: Optional[str] = None,
+) -> list[ChatMessage]:
+    """Build OpenRouter chat messages, always including the current user text."""
+    chat_messages: list[ChatMessage] = []
+    if system_prompt and system_prompt.strip():
+        chat_messages.append(
+            ChatMessage(role=MessageRole.SYSTEM, content=system_prompt.strip())
+        )
+
+    seen_user_content = False
+    current = (current_content or "").strip()
+    for msg in reversed(history):
+        text = (getattr(msg, "content", None) or "").strip()
+        if not text:
+            continue
+        role = coerce_message_role(getattr(msg, "role", MessageRole.USER))
+        chat_messages.append(ChatMessage(role=role, content=text))
+        if role == MessageRole.USER and text == current:
+            seen_user_content = True
+
+    if current and not seen_user_content:
+        chat_messages.append(ChatMessage(role=MessageRole.USER, content=current))
+
+    return chat_messages
+
+
 def ai_response_text(
     ai_response: Any,
     default: str = DEFAULT_SMS_REPLY,
@@ -325,21 +367,24 @@ class ConversationService:
                 "status": MessageStatus.COMPLETED,
             })
         
-        # Get conversation history for context
-        messages = await self.get_messages(conversation_id, limit=20)
-        
-        # Convert to ChatMessage format for AI
-        chat_messages = [
-            ChatMessage(role=msg.role, content=msg.content or "")
-            for msg in reversed(messages)  # Reverse to get chronological order
-            if msg.content
-        ]
-        
-        # Generate AI response
+        history = await self.get_messages(conversation_id, limit=20)
+        current_content = (
+            message_data.get("content")
+            or getattr(user_message, "content", None)
+            or ""
+        )
+        chat_messages = build_chat_messages(
+            history,
+            current_content=str(current_content),
+            system_prompt=conversation.system_prompt,
+        )
+        if not chat_messages:
+            raise ValueError("Cannot generate an AI reply without a user message")
+
         ai_service = self._ai_service()
         ai_response = await ai_service.chat(
             messages=chat_messages,
-            model=conversation.ai_model,
+            model=conversation.ai_model or self.settings.DEFAULT_AI_MODEL,
             temperature=conversation.temperature,
             max_tokens=conversation.max_tokens,
         )
@@ -550,6 +595,7 @@ class ConversationService:
                 title=f"SMS with {phone_number}",
                 channel=ChannelType.SMS,
                 external_id=phone_number,
+                ai_model=self.settings.DEFAULT_AI_MODEL,
             )
             session.add(conversation)
             await session.commit()
