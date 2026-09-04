@@ -308,6 +308,32 @@ class ConversationService:
             
             return message
     
+    async def _find_message_by_external_id(
+        self,
+        external_id: str,
+    ) -> Optional[Message]:
+        """Return a stored message with this Twilio MessageSid, if any."""
+        if not (external_id or "").strip():
+            return None
+        async with self._db() as session:
+            result = await session.execute(
+                select(Message)
+                .where(Message.external_id == external_id)
+                .limit(1)
+            )
+            return result.scalar_one_or_none()
+
+    async def _latest_assistant_text(self, conversation_id: Any) -> str:
+        """Newest assistant reply in a conversation, truncated for SMS."""
+        messages = await self.get_messages(str(conversation_id), limit=50)
+        for msg in messages:
+            if coerce_message_role(getattr(msg, "role", None)) != MessageRole.ASSISTANT:
+                continue
+            text = (getattr(msg, "content", None) or "").strip()
+            if text:
+                return truncate_sms_body(text)
+        return ""
+
     async def get_messages(
         self,
         conversation_id: str,
@@ -414,8 +440,20 @@ class ConversationService:
 
         Stores the inbound text once, generates an AI reply, and returns
         text for the webhook to send as TwiML (no REST send, to avoid a
-        duplicate outbound message).
+        duplicate outbound message). Twilio retries reuse MessageSid.
         """
+        existing = await self._find_message_by_external_id(incoming_sms.message_sid)
+        if existing is not None:
+            return {
+                "conversation_id": str(existing.conversation_id),
+                "user_message_id": str(existing.id),
+                "assistant_message_id": None,
+                "response_text": await self._latest_assistant_text(
+                    existing.conversation_id
+                ),
+                "duplicate": True,
+            }
+
         conversation = await self._get_or_create_sms_conversation(
             phone_number=incoming_sms.from_
         )
@@ -454,6 +492,7 @@ class ConversationService:
                 str(assistant_message.id) if assistant_message is not None else None
             ),
             "response_text": response_text,
+            "duplicate": False,
         }
     
     async def process_voice_call(

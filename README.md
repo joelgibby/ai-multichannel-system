@@ -158,7 +158,7 @@ Once running, visit:
 
 Inbound texts are handled by `POST /api/sms/webhook`. The webhook replies with TwiML only (one outbound message).
 
-1. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER` in `.env`. Docker Compose passes these into the API container. Set `SMS_SEND_API_KEY` (for example `openssl rand -hex 32`) before calling `POST /api/sms/send`. Keep that key off the frontend; the inbound webhook stays unauthenticated so Twilio can reach it.
+1. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER` in `.env`. Docker Compose passes these into the API container. Set `SMS_SEND_API_KEY` (for example `openssl rand -hex 32`) before calling `POST /api/sms/send`. Keep that key off the frontend. SMS and voice webhooks stay open for Twilio, but production requests must include a valid `X-Twilio-Signature`. Twilio retries reuse `MessageSid` so the same inbound text is not answered twice.
 2. In the Twilio Console, open your SMS-enabled number → Messaging → **A message comes in**:
    - Webhook: `{PUBLIC_API_BASE_URL}/api/sms/webhook` (HTTP POST)
    - Locally, expose the API with ngrok (or similar) and use that HTTPS URL plus `/api/sms/webhook`

@@ -5,6 +5,7 @@ import re
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
+from twilio.request_validator import RequestValidator
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 
@@ -56,6 +57,18 @@ def form_field(request_data: dict[str, Any], *names: str, default: str = "") -> 
         if text:
             return text
     return default
+
+
+def validate_twilio_signature(
+    auth_token: str,
+    url: str,
+    params: dict[str, Any],
+    signature: str,
+) -> bool:
+    """Return True if the Twilio request signature matches the payload."""
+    if not auth_token or not signature or not url:
+        return False
+    return RequestValidator(auth_token).validate(url, params, signature)
 
 
 def truncate_sms_body(body: str, max_length: int = SMS_BODY_MAX_LENGTH) -> str:
@@ -209,12 +222,14 @@ class SMSService:
             TwiML XML string
         """
         response = MessagingResponse()
-        response.message(truncate_sms_body(response_body))
-        
+        body = truncate_sms_body(response_body or "")
+        if body:
+            response.message(body)
+
         if media_urls:
             for url in media_urls:
                 response.message().media(url)
-        
+
         return str(response)
     
     def parse_incoming_sms(self, request_data: dict[str, Any]) -> IncomingSMS:
