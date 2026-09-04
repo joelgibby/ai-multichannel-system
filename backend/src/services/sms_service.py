@@ -5,6 +5,7 @@ import re
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
+from twilio.request_validator import RequestValidator
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 
@@ -31,6 +32,9 @@ class SMSResponse(BaseModel):
     num_media: int = 0
 
 
+SMS_BODY_MAX_LENGTH = 1600
+
+
 class IncomingSMS(BaseModel):
     """Incoming SMS structure from Twilio"""
     message_sid: str
@@ -40,6 +44,40 @@ class IncomingSMS(BaseModel):
     num_media: int = 0
     media_urls: list[str] = Field(default_factory=list)
     profile_name: Optional[str] = None
+
+
+def form_field(request_data: dict[str, Any], *names: str, default: str = "") -> str:
+    """Read a Twilio/form field by exact or case-insensitive name."""
+    lowered = {str(key).lower(): value for key, value in request_data.items()}
+    for name in names:
+        value = request_data.get(name, lowered.get(name.lower()))
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return default
+
+
+def validate_twilio_signature(
+    auth_token: str,
+    url: str,
+    params: dict[str, Any],
+    signature: str,
+) -> bool:
+    """Return True if the Twilio request signature matches the payload."""
+    if not auth_token or not signature or not url:
+        return False
+    return RequestValidator(auth_token).validate(url, params, signature)
+
+
+def truncate_sms_body(body: str, max_length: int = SMS_BODY_MAX_LENGTH) -> str:
+    """Trim an SMS body to Twilio's character limit."""
+    if len(body) <= max_length:
+        return body
+    if max_length <= 1:
+        return body[:max_length]
+    return body[: max_length - 1] + "…"
 
 
 class SMSService:
@@ -184,12 +222,14 @@ class SMSService:
             TwiML XML string
         """
         response = MessagingResponse()
-        response.message(response_body)
-        
+        body = truncate_sms_body(response_body or "")
+        if body:
+            response.message(body)
+
         if media_urls:
             for url in media_urls:
                 response.message().media(url)
-        
+
         return str(response)
     
     def parse_incoming_sms(self, request_data: dict[str, Any]) -> IncomingSMS:
@@ -202,24 +242,23 @@ class SMSService:
         Returns:
             IncomingSMS object
         """
-        # Extract media URLs if present
         media_urls = []
-        num_media = int(request_data.get("NumMedia", 0))
-        
+        num_media = int(form_field(request_data, "NumMedia", "num_media", default="0") or 0)
+
         if num_media > 0:
             for i in range(num_media):
-                media_url = request_data.get(f"MediaUrl{i}")
+                media_url = form_field(request_data, f"MediaUrl{i}", f"mediaurl{i}")
                 if media_url:
                     media_urls.append(media_url)
-        
+
         return IncomingSMS(
-            message_sid=request_data.get("MessageSid", ""),
-            from_=request_data.get("From", ""),
-            to=request_data.get("To", ""),
-            body=request_data.get("Body", ""),
+            message_sid=form_field(request_data, "MessageSid", "SmsSid", "message_sid"),
+            from_=form_field(request_data, "From", "from"),
+            to=form_field(request_data, "To", "to"),
+            body=form_field(request_data, "Body", "body", "text"),
             num_media=num_media,
             media_urls=media_urls,
-            profile_name=request_data.get("ProfileName"),
+            profile_name=form_field(request_data, "ProfileName", "profile_name") or None,
         )
     
     async def process_incoming_sms(

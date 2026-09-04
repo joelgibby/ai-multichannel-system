@@ -151,8 +151,19 @@ Once running, visit:
 - `GET /api/storage/{key}` - Download file by storage key
 
 ### SMS
-- `POST /api/sms/send` - Send SMS
+- `POST /api/sms/send` - Send SMS (requires `X-API-Key` or Bearer `SMS_SEND_API_KEY`, or a JWT)
 - `POST /api/sms/webhook` - Twilio webhook (for incoming SMS)
+
+### Twilio SMS Setup
+
+Inbound texts are handled by `POST /api/sms/webhook`. The webhook replies with TwiML only (one outbound message).
+
+1. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER` in `.env`. Docker Compose passes these into the API container. Set `SMS_SEND_API_KEY` (for example `openssl rand -hex 32`) before calling `POST /api/sms/send`. Keep that key off the frontend. SMS and voice webhooks stay open for Twilio, but production requests must include a valid `X-Twilio-Signature`. Twilio retries reuse `MessageSid` so the same inbound text is not answered twice.
+2. In the Twilio Console, open your SMS-enabled number → Messaging → **A message comes in**:
+   - Webhook: `{PUBLIC_API_BASE_URL}/api/sms/webhook` (HTTP POST)
+   - Locally, expose the API with ngrok (or similar) and use that HTTPS URL plus `/api/sms/webhook`
+   - In production, set `PUBLIC_API_BASE_URL` to your public Docker/nginx host and use that same path
+3. Trial accounts can only message [verified caller IDs](https://www.twilio.com/docs/usage/tutorials/how-to-use-your-free-trial-account).
 
 ### Voice
 - `POST /api/voice/call` - Make voice call
@@ -189,7 +200,7 @@ docker compose -f docker-compose.prod.yml logs -f api
 docker compose -f docker-compose.prod.yml down
 ```
 
-Point Twilio SMS/voice webhooks at your public host, for example:
+Set `PUBLIC_API_BASE_URL` in `.env` to the HTTPS origin Twilio and clients should call. Point Twilio SMS/voice webhooks at:
 - `https://your-domain/api/sms/webhook`
 - `https://your-domain/api/voice/webhook`
 

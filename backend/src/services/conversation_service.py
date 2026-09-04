@@ -19,9 +19,70 @@ from ..models.message import Message, MessageRole, MessageStatus, MessageType
 from ..models.user import User
 from ..services.ai_service import AIService, ChatMessage, get_ai_service
 from ..services.s3_service import get_s3_service
-from ..services.sms_service import IncomingSMS, SMSService, get_sms_service
+from ..services.sms_service import IncomingSMS, get_sms_service, truncate_sms_body
 from ..services.socket_service import SocketService, get_socket_service
 from ..services.voice_service import VoiceCall, VoiceService, get_voice_service
+
+DEFAULT_SMS_REPLY = "I received your message."
+
+
+def coerce_message_role(role: Any) -> MessageRole:
+    """Normalize DB/enum/string roles to MessageRole."""
+    if isinstance(role, MessageRole):
+        return role
+    value = getattr(role, "value", role)
+    text = str(value).strip().lower()
+    try:
+        return MessageRole(text)
+    except ValueError:
+        return MessageRole.USER
+
+
+def build_chat_messages(
+    history: list[Any],
+    *,
+    current_content: str = "",
+    system_prompt: Optional[str] = None,
+) -> list[ChatMessage]:
+    """Build OpenRouter chat messages, always including the current user text."""
+    chat_messages: list[ChatMessage] = []
+    if system_prompt and system_prompt.strip():
+        chat_messages.append(
+            ChatMessage(role=MessageRole.SYSTEM, content=system_prompt.strip())
+        )
+
+    seen_user_content = False
+    current = (current_content or "").strip()
+    for msg in reversed(history):
+        text = (getattr(msg, "content", None) or "").strip()
+        if not text:
+            continue
+        role = coerce_message_role(getattr(msg, "role", MessageRole.USER))
+        chat_messages.append(ChatMessage(role=role, content=text))
+        if role == MessageRole.USER and text == current:
+            seen_user_content = True
+
+    if current and not seen_user_content:
+        chat_messages.append(ChatMessage(role=MessageRole.USER, content=current))
+
+    return chat_messages
+
+
+def ai_response_text(
+    ai_response: Any,
+    default: str = DEFAULT_SMS_REPLY,
+) -> str:
+    """Read reply text from a ChatResponse, dict, or missing value."""
+    if ai_response is None:
+        return default
+    content = getattr(ai_response, "content", None)
+    if content:
+        return str(content)
+    if isinstance(ai_response, dict):
+        content = ai_response.get("content")
+        if content:
+            return str(content)
+    return default
 
 
 class ConversationService:
@@ -247,6 +308,32 @@ class ConversationService:
             
             return message
     
+    async def _find_message_by_external_id(
+        self,
+        external_id: str,
+    ) -> Optional[Message]:
+        """Return a stored message with this Twilio MessageSid, if any."""
+        if not (external_id or "").strip():
+            return None
+        async with self._db() as session:
+            result = await session.execute(
+                select(Message)
+                .where(Message.external_id == external_id)
+                .limit(1)
+            )
+            return result.scalar_one_or_none()
+
+    async def _latest_assistant_text(self, conversation_id: Any) -> str:
+        """Newest assistant reply in a conversation, truncated for SMS."""
+        messages = await self.get_messages(str(conversation_id), limit=50)
+        for msg in messages:
+            if coerce_message_role(getattr(msg, "role", None)) != MessageRole.ASSISTANT:
+                continue
+            text = (getattr(msg, "content", None) or "").strip()
+            if text:
+                return truncate_sms_body(text)
+        return ""
+
     async def get_messages(
         self,
         conversation_id: str,
@@ -278,6 +365,8 @@ class ConversationService:
         self,
         conversation_id: str,
         message_data: dict[str, Any],
+        *,
+        existing_user_message: Optional[Message] = None,
     ) -> dict[str, Any]:
         """
         Process a message (generate AI response)
@@ -285,6 +374,7 @@ class ConversationService:
         Args:
             conversation_id: Conversation ID
             message_data: Message data
+            existing_user_message: Already-stored user message (avoids a duplicate insert)
             
         Returns:
             Dictionary with processing results
@@ -294,28 +384,33 @@ class ConversationService:
         if not conversation:
             raise ValueError("Conversation not found")
         
-        # Add user message
-        user_message = await self.add_message(conversation_id, {
-            **message_data,
-            "role": MessageRole.USER,
-            "status": MessageStatus.COMPLETED,
-        })
+        if existing_user_message is not None:
+            user_message = existing_user_message
+        else:
+            user_message = await self.add_message(conversation_id, {
+                **message_data,
+                "role": MessageRole.USER,
+                "status": MessageStatus.COMPLETED,
+            })
         
-        # Get conversation history for context
-        messages = await self.get_messages(conversation_id, limit=20)
-        
-        # Convert to ChatMessage format for AI
-        chat_messages = [
-            ChatMessage(role=msg.role, content=msg.content or "")
-            for msg in reversed(messages)  # Reverse to get chronological order
-            if msg.content
-        ]
-        
-        # Generate AI response
+        history = await self.get_messages(conversation_id, limit=20)
+        current_content = (
+            message_data.get("content")
+            or getattr(user_message, "content", None)
+            or ""
+        )
+        chat_messages = build_chat_messages(
+            history,
+            current_content=str(current_content),
+            system_prompt=conversation.system_prompt,
+        )
+        if not chat_messages:
+            raise ValueError("Cannot generate an AI reply without a user message")
+
         ai_service = self._ai_service()
         ai_response = await ai_service.chat(
             messages=chat_messages,
-            model=conversation.ai_model,
+            model=conversation.ai_model or self.settings.DEFAULT_AI_MODEL,
             temperature=conversation.temperature,
             max_tokens=conversation.max_tokens,
         )
@@ -341,26 +436,33 @@ class ConversationService:
     
     async def process_sms(self, incoming_sms: IncomingSMS) -> dict[str, Any]:
         """
-        Process an incoming SMS message
-        
-        Args:
-            incoming_sms: Incoming SMS
-            
-        Returns:
-            Dictionary with processing results
+        Process an incoming SMS message.
+
+        Stores the inbound text once, generates an AI reply, and returns
+        text for the webhook to send as TwiML (no REST send, to avoid a
+        duplicate outbound message). Twilio retries reuse MessageSid.
         """
-        sms_service = self._sms_service()
-        
-        # Find or create conversation for this phone number
+        existing = await self._find_message_by_external_id(incoming_sms.message_sid)
+        if existing is not None:
+            return {
+                "conversation_id": str(existing.conversation_id),
+                "user_message_id": str(existing.id),
+                "assistant_message_id": None,
+                "response_text": await self._latest_assistant_text(
+                    existing.conversation_id
+                ),
+                "duplicate": True,
+            }
+
         conversation = await self._get_or_create_sms_conversation(
             phone_number=incoming_sms.from_
         )
-        
-        # Add the incoming message
+
         user_message = await self.add_message(conversation.id, {
             "role": MessageRole.USER,
             "content": incoming_sms.body,
             "message_type": MessageType.TEXT,
+            "status": MessageStatus.COMPLETED,
             "external_id": incoming_sms.message_sid,
             "message_metadata": {
                 "from": incoming_sms.from_,
@@ -368,36 +470,29 @@ class ConversationService:
                 "media_urls": incoming_sms.media_urls,
             },
         })
-        
-        # Process the message (generate AI response)
-        result = await self.process_message(conversation.id, {
-            "role": MessageRole.USER,
-            "content": incoming_sms.body,
-        })
-        
-        # Get the AI response
-        ai_response = result.get("ai_response", {})
-        assistant_message = result.get("assistant_message", {})
-        
-        # Generate SMS response
-        response_text = ai_response.get("content", "I received your message.")
-        
-        # Send the response back via SMS
-        try:
-            sms_response = sms_service.send_sms(
-                to=incoming_sms.from_,
-                body=response_text,
-            )
-        except Exception as e:
-            # Log error but don't fail
-            pass
-        
+
+        result = await self.process_message(
+            conversation.id,
+            {
+                "role": MessageRole.USER,
+                "content": incoming_sms.body,
+            },
+            existing_user_message=user_message,
+        )
+
+        assistant_message = result.get("assistant_message")
+        response_text = truncate_sms_body(
+            ai_response_text(result.get("ai_response"))
+        )
+
         return {
             "conversation_id": str(conversation.id),
             "user_message_id": str(user_message.id),
-            "assistant_message_id": str(assistant_message.id) if assistant_message else None,
+            "assistant_message_id": (
+                str(assistant_message.id) if assistant_message is not None else None
+            ),
             "response_text": response_text,
-            "sms_response": sms_response,
+            "duplicate": False,
         }
     
     async def process_voice_call(
@@ -448,11 +543,7 @@ class ConversationService:
                 "content": speech_result,
             })
             
-            # Generate voice response
-            ai_response = result.get("ai_response", {})
-            response_text = ai_response.get("content", "I received your message.")
-            
-            # Generate TwiML for the response
+            response_text = ai_response_text(result.get("ai_response"))
             twiml = voice_service.generate_twiml_voice_response(response_text)
             
             return {
@@ -491,11 +582,7 @@ class ConversationService:
                 "content": voice_result.get("text", ""),
             })
             
-            # Generate voice response
-            ai_response = result.get("ai_response", {})
-            response_text = ai_response.get("content", "I received your message.")
-            
-            # Generate TwiML for the response
+            response_text = ai_response_text(result.get("ai_response"))
             twiml = voice_service.generate_twiml_voice_response(response_text)
             
             return {
@@ -535,6 +622,7 @@ class ConversationService:
                 .where(Conversation.external_id == phone_number)
                 .where(Conversation.channel == ChannelType.SMS)
                 .order_by(Conversation.updated_at.desc())
+                .limit(1)
             )
             conversation = result.scalar_one_or_none()
             
@@ -546,6 +634,7 @@ class ConversationService:
                 title=f"SMS with {phone_number}",
                 channel=ChannelType.SMS,
                 external_id=phone_number,
+                ai_model=self.settings.DEFAULT_AI_MODEL,
             )
             session.add(conversation)
             await session.commit()

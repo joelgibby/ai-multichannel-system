@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production-use-openssl-rand-hex-32"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    SMS_SEND_API_KEY: Optional[str] = None
     
     # File Upload
     MAX_FILE_SIZE_MB: int = 100

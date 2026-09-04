@@ -13,6 +13,7 @@ import { MessageBubble } from '@/components/MessageBubble';
 import { SettingsModal } from '@/components/SettingsModal';
 import { ChannelSelector } from '@/components/ChannelSelector';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import toast from 'react-hot-toast';
 
 const VoiceRecorder = dynamic(
   () => import('@/components/VoiceRecorder').then((mod) => mod.VoiceRecorder),
@@ -31,18 +32,49 @@ const TypingIndicator: React.FC = () => (
   </div>
 );
 
+const CHANNEL_COPY: Record<ChannelType, { title: string; body: string; composer: boolean }> = {
+  web: {
+    title: 'Welcome to AI Multichannel',
+    body: 'Start a conversation with AI using voice, text, or upload files.',
+    composer: true,
+  },
+  sms: {
+    title: 'SMS conversations',
+    body: 'Threads appear here when someone texts your Twilio number. Replies are sent as SMS, not from this composer.',
+    composer: false,
+  },
+  voice: {
+    title: 'Voice calls',
+    body: 'Call threads appear here when Twilio hits the voice webhook. Use the number in Twilio, not this composer.',
+    composer: false,
+  },
+  email: {
+    title: 'Email',
+    body: 'Email threads are not wired to a composer yet.',
+    composer: false,
+  },
+  mobile: {
+    title: 'Mobile',
+    body: 'Mobile threads are not wired to a composer yet.',
+    composer: false,
+  },
+};
+
 // Welcome message component
-const WelcomeMessage: React.FC = () => (
+const WelcomeMessage: React.FC<{ channel: ChannelType }> = ({ channel }) => {
+  const copy = CHANNEL_COPY[channel] || CHANNEL_COPY.web;
+  return (
   <div className="flex flex-col items-center justify-center h-full text-center p-8">
     <div className="mb-6">
       <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg">
         <Bot className="w-10 h-10 text-white" />
       </div>
     </div>
-    <h1 className="text-3xl font-bold mb-2">Welcome to AI Multichannel</h1>
+    <h1 className="text-3xl font-bold mb-2">{copy.title}</h1>
     <p className="text-lg text-muted-foreground mb-6 max-w-md">
-      Start a conversation with AI using voice, text, or upload files.
+      {copy.body}
     </p>
+    {copy.composer && (
     <div className="flex gap-4">
       <button className="btn btn-primary gap-2">
         <Mic className="w-4 h-4" />
@@ -53,8 +85,10 @@ const WelcomeMessage: React.FC = () => (
         Upload File
       </button>
     </div>
+    )}
   </div>
-);
+  );
+};
 
 // Input area component
 interface InputAreaProps {
@@ -210,10 +244,11 @@ const ChatPage: React.FC = () => {
     sendVoiceMessage,
     uploadFile,
     createNewConversation,
-    loadConversation,
     switchConversation,
     deleteConversation,
     setActiveConversation,
+    setConversation,
+    setMessages,
     setTheme,
     setAIModel,
     setTemperature,
@@ -223,13 +258,35 @@ const ChatPage: React.FC = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [selectedChannel, setSelectedChannel] = useState<ChannelType>('web');
+  const canCompose = CHANNEL_COPY[selectedChannel]?.composer ?? true;
+  const channelConversations = conversations.filter(
+    (conversation) => conversation.channel === selectedChannel
+  );
 
   // Initialize conversation on mount
   useEffect(() => {
-    if (isAuthenticated && !activeConversationId && conversations.length === 0) {
+    if (isAuthenticated && selectedChannel === 'web' && !activeConversationId && conversations.length === 0) {
       createNewConversation('web');
     }
-  }, [isAuthenticated, activeConversationId, conversations.length, createNewConversation]);
+  }, [isAuthenticated, activeConversationId, conversations.length, createNewConversation, selectedChannel]);
+
+  useEffect(() => {
+    const matches = conversations.filter((conversation) => conversation.channel === selectedChannel);
+    if (activeConversationId && matches.some((conversation) => conversation.id === activeConversationId)) {
+      return;
+    }
+    if (matches.length > 0) {
+      switchConversation(matches[0].id);
+      return;
+    }
+    if (conversations.length === 0 && selectedChannel === 'web') {
+      return;
+    }
+    setActiveConversation(undefined);
+    setConversation(undefined);
+    setMessages([]);
+  }, [selectedChannel, conversations, activeConversationId, switchConversation, setActiveConversation, setConversation, setMessages]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -270,12 +327,19 @@ const ChatPage: React.FC = () => {
 
   // Handle new conversation
   const handleNewConversation = async () => {
+    if (!canCompose) {
+      toast('This channel is created by inbound Twilio traffic, not from New Chat.');
+      return;
+    }
     const newConversation = await createNewConversation('web');
     setActiveConversation(newConversation.id);
   };
 
   // Handle send message
   const handleSendMessage = async (content: string) => {
+    if (!canCompose) {
+      return;
+    }
     if (!activeConversationId) {
       const newConversation = await createNewConversation('web');
       setActiveConversation(newConversation.id);
@@ -307,7 +371,7 @@ const ChatPage: React.FC = () => {
       <div className="flex h-screen bg-background">
         {/* Sidebar */}
         <Sidebar
-          conversations={conversations}
+          conversations={channelConversations}
           activeConversationId={activeConversationId}
           onSwitchConversation={handleSwitchConversation}
           onNewConversation={handleNewConversation}
@@ -321,7 +385,10 @@ const ChatPage: React.FC = () => {
           <header className="border-b border-border p-4 flex items-center justify-between bg-background/50 backdrop-blur-sm">
             <div className="flex items-center gap-4">
               <ConnectionStatus />
-              <ChannelSelector />
+              <ChannelSelector
+                value={selectedChannel}
+                onChange={setSelectedChannel}
+              />
             </div>
             
             <div className="flex items-center gap-4">
@@ -352,7 +419,7 @@ const ChatPage: React.FC = () => {
             className="flex-1 overflow-y-auto p-4 space-y-4"
           >
             {showWelcome ? (
-              <WelcomeMessage />
+              <WelcomeMessage channel={selectedChannel} />
             ) : (
               <>
                 {messages.map((message) => (
@@ -437,6 +504,7 @@ const ChatPage: React.FC = () => {
           </div>
 
           {/* Input area */}
+          {canCompose ? (
           <InputArea
             onSend={handleSendMessage}
             onVoiceRecord={handleVoiceRecord}
@@ -444,6 +512,13 @@ const ChatPage: React.FC = () => {
             isLoading={isLoading || isUploading}
             isRecording={isRecording}
           />
+          ) : (
+            <div className="border-t border-border p-4 bg-background/50 backdrop-blur-sm">
+              <p className="text-sm text-muted-foreground text-center max-w-2xl mx-auto">
+                {CHANNEL_COPY[selectedChannel]?.body}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

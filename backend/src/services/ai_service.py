@@ -119,16 +119,20 @@ class AIService:
                 "content": msg.content or "",
             }
             for msg in messages
+            if (msg.content or "").strip()
         ]
-        
+        if not formatted_messages:
+            raise ValueError("OpenRouter requires at least one chat message")
+
         request_data = {
             "model": model,
             "messages": formatted_messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "stream": stream,
             **kwargs,
         }
+        if stream:
+            request_data["stream"] = True
         
         headers = {
             "Authorization": f"Bearer {self.settings.OPENROUTER_API_KEY}",
